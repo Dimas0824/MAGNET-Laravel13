@@ -1,10 +1,13 @@
 <?php
 
-use function Livewire\Volt\{state, layout, mount};
 use App\Models\Chat;
 use App\Models\KontrakMagang;
 use App\Models\Mahasiswa;
 use Illuminate\Support\Facades\Auth;
+
+use function Livewire\Volt\layout;
+use function Livewire\Volt\mount;
+use function Livewire\Volt\state;
 
 layout('components.layouts.user.main');
 
@@ -22,12 +25,13 @@ state([
 
 mount(function () {
     // Pastikan user adalah dosen
-    if (!Auth::guard('dosen')->check()) {
+    if (! Auth::guard('dosen')->check()) {
         abort(403, 'Unauthorized access');
     }
 
-    // Ambil ID mahasiswa dari query parameter
-    $this->mahasiswaId = request()->query('id');
+    // Ambil ID mahasiswa dari query parameter, validasi sebelum dipakai.
+    $mahasiswaId = (int) request()->query('id');
+    $this->mahasiswaId = $mahasiswaId > 0 ? $mahasiswaId : null;
 
     $this->initializeChat();
 });
@@ -37,21 +41,24 @@ $initializeChat = function () {
         $currentUserId = Auth::guard('dosen')->id();
 
         // Check if user is authenticated
-        if (!$currentUserId) {
+        if (! $currentUserId) {
             session()->flash('error', 'Anda harus login sebagai dosen terlebih dahulu.');
+
             return;
         }
 
         // Check mahasiswa ID dari query parameter
-        if (!$this->mahasiswaId) {
+        if (! $this->mahasiswaId) {
             session()->flash('error', 'ID mahasiswa tidak ditemukan dalam URL.');
+
             return;
         }
 
         // Get mahasiswa data
         $mahasiswa = Mahasiswa::find($this->mahasiswaId);
-        if (!$mahasiswa) {
+        if (! $mahasiswa) {
             session()->flash('error', 'Mahasiswa tidak ditemukan.');
+
             return;
         }
 
@@ -64,8 +71,9 @@ $initializeChat = function () {
             ->latest()
             ->first();
 
-        if (!$kontrak) {
+        if (! $kontrak) {
             session()->flash('error', 'Kontrak magang tidak ditemukan atau Anda bukan dosen pembimbing mahasiswa ini.');
+
             return;
         }
 
@@ -86,7 +94,7 @@ $initializeChat = function () {
 };
 
 $loadMessages = function () {
-    if (!$this->isAuthorized || !$this->mahasiswaData) {
+    if (! $this->isAuthorized || ! $this->mahasiswaData) {
         return;
     }
 
@@ -124,7 +132,7 @@ $loadMessages = function () {
             ->toArray();
 
         // Update last message ID for polling
-        if (!empty($this->messages)) {
+        if (! empty($this->messages)) {
             $this->lastMessageId = max(array_column($this->messages, 'id'));
         }
     } catch (\Exception $e) {
@@ -137,7 +145,7 @@ $loadMessages = function () {
 };
 
 $checkNewMessages = function () {
-    if (!$this->isAuthorized || !$this->mahasiswaData || !$this->isPolling) {
+    if (! $this->isAuthorized || ! $this->mahasiswaData || ! $this->isPolling) {
         return;
     }
 
@@ -193,16 +201,19 @@ $sendMessage = function () {
     // Validate input
     if (empty(trim($this->messageText))) {
         session()->flash('error', 'Pesan tidak boleh kosong.');
+
         return;
     }
 
-    if (!$this->isAuthorized) {
+    if (! $this->isAuthorized) {
         session()->flash('error', 'Anda tidak memiliki akses untuk mengirim pesan.');
+
         return;
     }
 
-    if (!$this->mahasiswaData || !$this->kontrakMagangId) {
+    if (! $this->mahasiswaData || ! $this->kontrakMagangId) {
         session()->flash('error', 'Data tidak lengkap untuk mengirim pesan.');
+
         return;
     }
 
@@ -219,8 +230,9 @@ $sendMessage = function () {
 
         // Periksa apakah kontrak magang benar-benar ada
         $kontrakExists = KontrakMagang::find($this->kontrakMagangId);
-        if (!$kontrakExists) {
+        if (! $kontrakExists) {
             session()->flash('error', 'Kontrak magang tidak ditemukan di database.');
+
             return;
         }
 
@@ -264,7 +276,7 @@ $sendMessage = function () {
 };
 
 $togglePolling = function () {
-    $this->isPolling = !$this->isPolling;
+    $this->isPolling = ! $this->isPolling;
 };
 
 ?>

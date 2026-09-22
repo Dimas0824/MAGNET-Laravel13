@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class PengajuanMagangController extends Controller
@@ -35,8 +36,9 @@ class PengajuanMagangController extends Controller
     {
         $date = now()->format('Y-m-d');
         $name = preg_replace('/[^a-z0-9_]/', '', str_replace(' ', '_', strtolower($mahasiswa->nama)));
+        $token = Str::lower(Str::random(8));
 
-        return "{$type}_{$date}_{$name}.{$extension}";
+        return "{$type}_{$date}_{$name}_{$token}.{$extension}";
     }
 
     /**
@@ -199,11 +201,6 @@ class PengajuanMagangController extends Controller
                 'trace' => $e->getTraceAsString(),
                 'request_data' => $request->except(['cv', 'transkrip_nilai', 'portfolio']),
             ]);
-
-            // Show actual error in debug mode
-            if (config('app.debug')) {
-                return back()->with('error', 'Debug Error: '.$e->getMessage().' in '.$e->getFile().':'.$e->getLine());
-            }
 
             return back()->with('error', 'Terjadi kesalahan sistem. Silakan coba lagi atau hubungi admin.');
         }
