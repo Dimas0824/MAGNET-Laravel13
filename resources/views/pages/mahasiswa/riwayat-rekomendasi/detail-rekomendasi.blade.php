@@ -385,7 +385,7 @@ $getUniqueByLowonganId = function ($collection) {
                                 </tr>
                                 <tr>
                                     <td class="px-6 py-3">Open Remote</td>
-                                    <td class="px-6 py-3">{{ $mahasiswa->preferensi_open_remote ? 'Ya' : 'Tidak' }}
+                                    <td class="px-6 py-3">{{ ($mahasiswa->kriteriaOpenRemote->open_remote ?? null) === 'ya' ? 'Ya' : 'Tidak' }}
                                     </td>
                                 </tr>
                                 <tr>
@@ -792,6 +792,10 @@ $getUniqueByLowonganId = function ($collection) {
                                 <tbody class="bg-white text-black">
                                     @php
                                         $mahasiswaLogin = Auth::guard('mahasiswa')->user();
+                                        // Pre-index the stage rankings to avoid O(n^2) collection scans per row.
+                                        $rankingRSIndex = $rankingRS->keyBy(fn ($r) => $r->mahasiswa_id.'-'.$r->lowongan_magang_id);
+                                        $rankingRPIndex = $rankingRP->keyBy(fn ($r) => $r->mahasiswa_id.'-'.$r->lowongan_magang_id);
+                                        $rankingFMFIndex = $rankingFMF->keyBy(fn ($r) => $r->mahasiswa_id.'-'.$r->lowongan_magang_id);
                                     @endphp
 
                                     @foreach ($finalRanking as $ranking)
@@ -808,13 +812,13 @@ $getUniqueByLowonganId = function ($collection) {
                                                     {{ $ranking->lowonganMagang->perusahaan->nama ?? '-' }}
                                                 </td>
                                                 <td class="text-center px-6 py-4">
-                                                    {{ $rankingRS->where('mahasiswa_id', $ranking->mahasiswa_id)->where('lowongan_magang_id', $ranking->lowongan_magang_id)->first()->rank ?? '-' }}
+                                                    {{ $rankingRSIndex[$ranking->mahasiswa_id.'-'.$ranking->lowongan_magang_id]->rank ?? '-' }}
                                                 </td>
                                                 <td class="text-center px-6 py-4">
-                                                    {{ $rankingRP->where('mahasiswa_id', $ranking->mahasiswa_id)->where('lowongan_magang_id', $ranking->lowongan_magang_id)->first()->rank ?? '-' }}
+                                                    {{ $rankingRPIndex[$ranking->mahasiswa_id.'-'.$ranking->lowongan_magang_id]->rank ?? '-' }}
                                                 </td>
                                                 <td class="text-center px-6 py-4">
-                                                    {{ $rankingFMF->where('mahasiswa_id', $ranking->mahasiswa_id)->where('lowongan_magang_id', $ranking->lowongan_magang_id)->first()->rank ?? '-' }}
+                                                    {{ $rankingFMFIndex[$ranking->mahasiswa_id.'-'.$ranking->lowongan_magang_id]->rank ?? '-' }}
                                                 </td>
                                                 <td class="text-center px-6 py-4">
                                                     {{ number_format($ranking->avg_rank, 6) }}
