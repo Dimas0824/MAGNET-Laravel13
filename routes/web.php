@@ -5,7 +5,7 @@ use Livewire\Volt\Volt;
 use App\Http\Controllers\PengajuanMagangController;
 use App\Http\Controllers\TemplateController;
 
-require_once __DIR__ . '/auth.php';
+require __DIR__ . '/auth.php';
 
 Route::name('guest.')
     ->group(function () {
