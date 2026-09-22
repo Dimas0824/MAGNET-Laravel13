@@ -1,7 +1,17 @@
 <?php
 
-use function Livewire\Volt\{state, mount, layout};
-use App\Models\{Mahasiswa, LowonganMagang, EncodedAlternatives, VectorNormalization, RatioSystem, ReferencePoint, FullMultiplicativeForm, FinalRankRecommendation};
+use App\Models\EncodedAlternatives;
+use App\Models\FinalRankRecommendation;
+use App\Models\FullMultiplicativeForm;
+use App\Models\LowonganMagang;
+use App\Models\Mahasiswa;
+use App\Models\RatioSystem;
+use App\Models\ReferencePoint;
+use App\Models\VectorNormalization;
+
+use function Livewire\Volt\layout;
+use function Livewire\Volt\mount;
+use function Livewire\Volt\state;
 
 layout('components.layouts.user.main');
 
@@ -34,9 +44,10 @@ mount(function () {
 });
 
 $getRankingKriteria = function () {
-    if (!$this->mahasiswa) {
+    if (! $this->mahasiswa) {
         return [];
     }
+
     return [
         [
             'nama' => 'Lokasi',
@@ -67,7 +78,7 @@ $getRankingKriteria = function () {
 };
 
 $getAlternatifLowongan = function () {
-    return LowonganMagang::with(['lokasi_magang', 'perusahaan.bidangIndustri', 'pekerjaan'])->get();
+    return LowonganMagang::with(['lokasiMagang', 'perusahaan.bidangIndustri', 'pekerjaan'])->get();
 };
 
 $getNumericTable = function () {
@@ -77,13 +88,14 @@ $getNumericTable = function () {
         ->when($tanggal, function ($query) use ($tanggal) {
             return $query->whereDate('created_at', $tanggal);
         })
-        ->when(!$tanggal, function ($query) {
+        ->when(! $tanggal, function ($query) {
             return $query->whereDate('created_at', now()->toDateString());
         })
         ->orderBy('created_at', 'desc');
 
     // Ambil data dan filter untuk mendapatkan data terbaru per lowongan_magang_id
     $allData = $query->get();
+
     return $this->getUniqueByLowonganId($allData);
 };
 
@@ -94,13 +106,14 @@ $getUniqueVectorNormalization = function () {
         ->when($tanggal, function ($query) use ($tanggal) {
             return $query->whereDate('created_at', $tanggal);
         })
-        ->when(!$tanggal, function ($query) {
+        ->when(! $tanggal, function ($query) {
             return $query->whereDate('created_at', now()->toDateString());
         })
         ->orderBy('created_at', 'desc');
 
     // Ambil data dan filter untuk mendapatkan data terbaru per lowongan_magang_id
     $allData = $query->get();
+
     return $this->getUniqueByLowonganId($allData);
 };
 
@@ -129,7 +142,7 @@ $getNormalisasiEuclidean = function () {
         $values = $numericTable
             ->pluck($column)
             ->filter(function ($value) {
-                return !is_null($value) && is_numeric($value);
+                return ! is_null($value) && is_numeric($value);
             })
             ->map(function ($value) {
                 return (float) $value;
@@ -155,7 +168,7 @@ $getRankingRS = function () {
         ->when($tanggal, function ($query) use ($tanggal) {
             return $query->whereDate('created_at', $tanggal);
         })
-        ->when(!$tanggal, function ($query) {
+        ->when(! $tanggal, function ($query) {
             return $query->whereDate('created_at', now()->toDateString());
         })
         ->orderBy('created_at', 'desc');
@@ -175,7 +188,7 @@ $getRankingRP = function () {
         ->when($tanggal, function ($query) use ($tanggal) {
             return $query->whereDate('created_at', $tanggal);
         })
-        ->when(!$tanggal, function ($query) {
+        ->when(! $tanggal, function ($query) {
             return $query->whereDate('created_at', now()->toDateString());
         })
         ->orderBy('created_at', 'desc');
@@ -195,7 +208,7 @@ $getRankingFMF = function () {
         ->when($tanggal, function ($query) use ($tanggal) {
             return $query->whereDate('created_at', $tanggal);
         })
-        ->when(!$tanggal, function ($query) {
+        ->when(! $tanggal, function ($query) {
             return $query->whereDate('created_at', now()->toDateString());
         })
         ->orderBy('created_at', 'desc');
@@ -212,8 +225,8 @@ $getRankingGlobal = function () {
     $tanggal = request('tanggal');
 
     $query = FinalRankRecommendation::with(['mahasiswa', 'lowonganMagang.perusahaan', 'ratioSystem', 'referencePoint', 'fullMultiplicativeForm'])
-        ->when($tanggal, fn($query) => $query->whereDate('created_at', $tanggal))
-        ->when(!$tanggal, fn($query) => $query->whereDate('created_at', now()->toDateString()))
+        ->when($tanggal, fn ($query) => $query->whereDate('created_at', $tanggal))
+        ->when(! $tanggal, fn ($query) => $query->whereDate('created_at', now()->toDateString()))
         ->orderBy('created_at', 'desc');
 
     // Ambil data dan filter untuk mendapatkan data terbaru per lowongan_magang_id
@@ -233,7 +246,7 @@ $getTopRekomendasi = function () {
         ->when($tanggal, function ($query) use ($tanggal) {
             return $query->whereDate('created_at', $tanggal);
         })
-        ->when(!$tanggal, function ($query) {
+        ->when(! $tanggal, function ($query) {
             return $query->whereDate('created_at', now()->toDateString());
         })
         ->where('mahasiswa_id', $mahasiswa->id)
@@ -249,6 +262,7 @@ $getTopRekomendasi = function () {
     // Re-rank berdasarkan urutan
     return $topRecommendations->map(function ($item, $index) {
         $item->display_rank = $index + 1;
+
         return $item;
     });
 };
@@ -263,7 +277,7 @@ $getUniqueByLowonganId = function ($collection) {
 
         // Jika lowongan_magang_id belum ada dalam hasil, tambahkan
         // Data sudah diurutkan berdasarkan created_at desc, jadi yang pertama adalah yang terbaru
-        if (!in_array($lowonganId, $usedLowonganIds)) {
+        if (! in_array($lowonganId, $usedLowonganIds)) {
             $uniqueData->push($item);
             $usedLowonganIds[] = $lowonganId;
         }
@@ -418,7 +432,7 @@ $getUniqueByLowonganId = function ($collection) {
                                             <td class="px-6 py-3">{{ $lowongan->id ?? '-' }}</td>
                                             <td class="px-6 py-3">{{ $lowongan->perusahaan->nama ?? '-' }}</td>
                                             <td class="px-6 py-3">
-                                                {{ $lowongan->lokasi_magang->kategori_lokasi ?? '-' }}</td>
+                                                {{ $lowongan->lokasiMagang->kategori_lokasi ?? '-' }}</td>
                                             <td class="px-6 py-3">
                                                 {{ ucfirst($lowongan->open_remote) ? 'Ya' : 'Tidak' }}</td>
                                             <td class="px-6 py-3">{{ ucfirst($lowongan->jenis_magang) }}</td>

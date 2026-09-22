@@ -7,20 +7,20 @@ use App\Models\DosenPembimbing;
 use App\Models\FormPengajuanMagang;
 use App\Models\KontrakMagang;
 use App\Models\LogMagang;
-use App\Models\LowonganMagang;
 use App\Models\Mahasiswa;
 use App\Models\Perusahaan;
 use App\Models\UlasanMagang;
 use App\Models\UmpanBalikMagang;
+use Illuminate\Support\Carbon;
 
 beforeEach(function () {
     seedMasterData();
 });
 
 it('exposes the role name on each user model', function () {
-    expect((new Mahasiswa())->getRoleName())->toBe('mahasiswa')
-        ->and((new DosenPembimbing())->getRoleName())->toBe('dosen')
-        ->and((new Admin())->getRoleName())->toBe('admin');
+    expect((new Mahasiswa)->getRoleName())->toBe('mahasiswa')
+        ->and((new DosenPembimbing)->getRoleName())->toBe('dosen')
+        ->and((new Admin)->getRoleName())->toBe('admin');
 });
 
 it('resolves the mahasiswa criteria preference relations', function () {
@@ -38,7 +38,7 @@ it('resolves a lowongan magang with company, job and location', function () {
 
     expect($lowongan->perusahaan)->toBeInstanceOf(Perusahaan::class)
         ->and($lowongan->pekerjaan)->not->toBeNull()
-        ->and($lowongan->lokasi_magang)->not->toBeNull();
+        ->and($lowongan->lokasiMagang)->not->toBeNull();
 });
 
 it('links a kontrak magang to mahasiswa, dosen and openings', function () {
@@ -57,7 +57,7 @@ it('links a kontrak magang to mahasiswa, dosen and openings', function () {
     expect($kontrak->mahasiswa->id)->toBe($mahasiswa->id)
         ->and($kontrak->dosenPembimbing->id)->toBe($dosen->id)
         ->and($kontrak->lowonganMagang->id)->toBe($lowongan->id)
-        ->and($kontrak->waktu_awal)->toBeInstanceOf(Illuminate\Support\Carbon::class);
+        ->and($kontrak->waktu_awal)->toBeInstanceOf(Carbon::class);
 });
 
 it('cascades logs, ulasan, umpan balik and chats under a kontrak', function () {

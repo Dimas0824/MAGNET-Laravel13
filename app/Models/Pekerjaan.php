@@ -12,14 +12,16 @@ class Pekerjaan extends Model
     protected $table = 'pekerjaan';
 
     protected $fillable = [
-        'nama'
+        'nama',
     ];
 
-    public function kriteriPekerjaan() {
+    public function kriteriaPekerjaan()
+    {
         return $this->hasMany(KriteriaPekerjaan::class);
     }
 
-    public function lowonganMagang() {
+    public function lowonganMagang()
+    {
         return $this->hasMany(LowonganMagang::class);
     }
 }

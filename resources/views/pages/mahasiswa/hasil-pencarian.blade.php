@@ -1,8 +1,16 @@
 <?php
 
-use function Livewire\Volt\{layout, state, computed, mount, with, uses};
-use App\Models\{LokasiMagang, LowonganMagang, Perusahaan};
+use App\Models\LokasiMagang;
+use App\Models\LowonganMagang;
+use App\Models\Perusahaan;
 use Livewire\WithPagination;
+
+use function Livewire\Volt\computed;
+use function Livewire\Volt\layout;
+use function Livewire\Volt\mount;
+use function Livewire\Volt\state;
+use function Livewire\Volt\uses;
+use function Livewire\Volt\with;
 
 layout('components.layouts.user.main');
 uses([WithPagination::class]);
@@ -24,16 +32,16 @@ mount(function () {
 });
 
 $jobs = computed(function () {
-    $query = LowonganMagang::with(['perusahaan', 'pekerjaan', 'lokasi_magang'])->where('status', $this->filterByStatus);
+    $query = LowonganMagang::with(['perusahaan', 'pekerjaan', 'lokasiMagang'])->where('status', $this->filterByStatus);
 
     // Apply search filter (lowongan has no "nama" column; search by related
     // company name and location).
-    if (!empty($this->searchQuery)) {
+    if (! empty($this->searchQuery)) {
         $query->where(function ($q) {
             $q->orWhereHas('perusahaan', function ($company) {
-                    $company->where('nama', 'LIKE', "%{$this->searchQuery}%");
-                })
-                ->orWhereHas('lokasi_magang', function ($location) {
+                $company->where('nama', 'LIKE', "%{$this->searchQuery}%");
+            })
+                ->orWhereHas('lokasiMagang', function ($location) {
                     $location->where('lokasi', 'LIKE', "%{$this->searchQuery}%");
                 });
         });
@@ -46,7 +54,7 @@ $jobs = computed(function () {
 
     // Apply location filter
     if ($this->filterByLocation !== 'all') {
-        $query->whereHas('lokasi_magang', function ($location) {
+        $query->whereHas('lokasiMagang', function ($location) {
             $location->where('kategori_lokasi', $this->filterByLocation);
         });
     }
@@ -61,7 +69,7 @@ $selectJob = function ($jobId) {
     $this->isLoadingDetail = true;
 
     try {
-        $this->selectedJob = LowonganMagang::with(['perusahaan.bidangIndustri', 'pekerjaan', 'lokasi_magang', 'kontrak_magang.ulasanMagang.mahasiswa'])->findOrFail($jobId);
+        $this->selectedJob = LowonganMagang::with(['perusahaan.bidangIndustri', 'pekerjaan', 'lokasiMagang', 'kontrak_magang.ulasanMagang.mahasiswa'])->findOrFail($jobId);
     } catch (\Exception $e) {
         session()->flash('error', 'Lowongan tidak ditemukan.');
         $this->selectedJob = null;
@@ -293,7 +301,7 @@ $getFilterOptions = computed(function () {
                                                 <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
                                                     <div class="flex items-center gap-1">
                                                         <flux:icon.map-pin class="size-3" />
-                                                        {{ $job->lokasi_magang->lokasi ?? 'Remote' }}
+                                                        {{ $job->lokasiMagang->lokasi ?? 'Remote' }}
                                                     </div>
 
                                                     <div class="flex items-center gap-1">
@@ -404,7 +412,7 @@ $getFilterOptions = computed(function () {
                                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                                                     <div class="flex items-center gap-2 text-gray-600">
                                                         <flux:icon.map-pin class="size-4 text-gray-400" />
-                                                        {{ $selectedJob->lokasi_magang->lokasi ?? 'Remote' }}
+                                                        {{ $selectedJob->lokasiMagang->lokasi ?? 'Remote' }}
                                                     </div>
 
                                                     <div class="flex items-center gap-2 text-gray-600">

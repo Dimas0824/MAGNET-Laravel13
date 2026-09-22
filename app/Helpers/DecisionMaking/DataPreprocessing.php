@@ -13,7 +13,6 @@ class DataPreprocessing
 {
     /**
      * Compute data categorization from raw alternatives data
-     * @return void
      */
     public static function dataCategorization(LowonganMagang $lowonganMagang): void
     {
@@ -23,7 +22,7 @@ class DataPreprocessing
             'open_remote' => $lowonganMagang->open_remote,
             'jenis_magang' => $lowonganMagang->jenis_magang,
             'bidang_industri' => $lowonganMagang->perusahaan->bidangIndustri->nama,
-            'lokasi_magang' => $lowonganMagang->lokasi_magang->lokasi
+            'lokasi_magang' => $lowonganMagang->lokasiMagang->lokasi,
         ];
 
         $lokasi_magang_list = LokasiMagang::pluck('kategori_lokasi', 'lokasi')
@@ -38,10 +37,9 @@ class DataPreprocessing
         Storage::put(config('recommendation-system.preprocessing.alternatives_categorized_path'), json_encode($fileContent, JSON_PRETTY_PRINT));
     }
 
-
-
     /**
      * Compute data encoding based from to all alternatives data based on user preference
+     *
      * @return array<int, array<string, int>>
      */
     public static function dataEncoding(Mahasiswa $mahasiswa): void
@@ -51,7 +49,7 @@ class DataPreprocessing
             'bidang_industri' => $mahasiswa->kriteriaBidangIndustri->bidangIndustri->nama,
             'jenis_magang' => $mahasiswa->kriteriaJenisMagang->jenis_magang,
             'lokasi_magang' => $mahasiswa->kriteriaLokasiMagang->lokasi_magang->kategori_lokasi,
-            'open_remote' => $mahasiswa->kriteriaOpenRemote->open_remote
+            'open_remote' => $mahasiswa->kriteriaOpenRemote->open_remote,
         ];
 
         $dataCategorized = Storage::json(config('recommendation-system.preprocessing.alternatives_categorized_path'));
@@ -59,7 +57,7 @@ class DataPreprocessing
         $now = now();
 
         $result = array_map(
-            fn(array $item): array => [
+            fn (array $item): array => [
                 'mahasiswa_id' => $mahasiswa->id,
                 'lowongan_magang_id' => $item['id'],
                 'pekerjaan' => match ($preference['pekerjaan']) {

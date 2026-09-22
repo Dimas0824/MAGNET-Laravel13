@@ -34,12 +34,13 @@ class LowonganMagang extends Model
             $categorizeDataToPrepareAlternatives($lowonganMagang);
         });
 
-        static::updated(function (LowonganMagang $lowonganMagang) use($categorizeDataToPrepareAlternatives) {
+        static::updated(function (LowonganMagang $lowonganMagang) use ($categorizeDataToPrepareAlternatives) {
             $categorizeDataToPrepareAlternatives($lowonganMagang);
         });
     }
 
-    public function lokasi_magang() {
+    public function lokasiMagang()
+    {
         return $this->belongsTo(LokasiMagang::class);
     }
 

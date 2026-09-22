@@ -19,7 +19,7 @@ class Perusahaan extends Model
         'rating',
         'logo',
         'website',
-        'deskripsi'
+        'deskripsi',
     ];
 
     protected $casts = [
@@ -27,7 +27,7 @@ class Perusahaan extends Model
         'rating' => 'float',
     ];
 
-    public function lowongan_magang()
+    public function lowonganMagang()
     {
         return $this->hasMany(LowonganMagang::class);
     }

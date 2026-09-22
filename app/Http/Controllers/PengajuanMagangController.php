@@ -2,15 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Mahasiswa;
-use App\Models\LowonganMagang as Magang;
 use App\Models\BerkasPengajuanMagang;
 use App\Models\FormPengajuanMagang;
+use App\Models\Mahasiswa;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Session;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class PengajuanMagangController extends Controller
 {
@@ -19,11 +18,11 @@ class PengajuanMagangController extends Controller
      */
     private function ensureDirectoryExists($path)
     {
-        $fullPath = storage_path('app/public/' . $path);
+        $fullPath = storage_path('app/public/'.$path);
 
-        if (!is_dir($fullPath)) {
+        if (! is_dir($fullPath)) {
             mkdir($fullPath, 0755, true);
-            Log::info('Directory created: ' . $fullPath);
+            Log::info('Directory created: '.$fullPath);
         }
 
         return $fullPath;
@@ -55,12 +54,12 @@ class PengajuanMagangController extends Controller
                     ->update([
                         'status' => 'diproses',
                         'keterangan' => 'Dokumen telah dikirim, diproses review admin',
-                        'updated_at' => now()
+                        'updated_at' => now(),
                     ]);
 
                 Log::info('Status pengajuan updated to diproses', [
                     'mahasiswa_id' => $mahasiswaId,
-                    'berkas_id' => $berkas->id
+                    'berkas_id' => $berkas->id,
                 ]);
 
                 return true;
@@ -70,8 +69,9 @@ class PengajuanMagangController extends Controller
         } catch (\Exception $e) {
             Log::error('Error updating status pengajuan', [
                 'mahasiswa_id' => $mahasiswaId,
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ]);
+
             return false;
         }
     }
@@ -108,14 +108,16 @@ class PengajuanMagangController extends Controller
 
             // Ambil data mahasiswa
             $mahasiswaId = auth('mahasiswa')->id();
-            if (!$mahasiswaId) {
+            if (! $mahasiswaId) {
                 Log::error('Authentication failed - no mahasiswa ID found');
+
                 return back()->with('error', 'Sesi login berakhir. Silakan login ulang.');
             }
             $mahasiswa = Mahasiswa::find($mahasiswaId);
 
-            if (!$mahasiswa) {
+            if (! $mahasiswa) {
                 Log::error('Mahasiswa not found', ['mahasiswa_id' => $mahasiswaId]);
+
                 return back()->with('error', 'Data mahasiswa tidak ditemukan. Silakan login ulang.');
             }
 
@@ -123,7 +125,7 @@ class PengajuanMagangController extends Controller
             Log::info('Mahasiswa found for pengajuan', [
                 'mahasiswa_id' => $mahasiswa->id,
                 'nama' => $mahasiswa->nama,
-                'nim' => $mahasiswa->nim
+                'nim' => $mahasiswa->nim,
             ]);
 
             // Cek dan hapus berkas lama jika ada
@@ -166,14 +168,14 @@ class PengajuanMagangController extends Controller
                     'mahasiswa_id' => $mahasiswa->id,
                     'cv' => $cvPath,
                     'transkrip_nilai' => $transkripPath,
-                    'portfolio' => $portfolioPath
+                    'portfolio' => $portfolioPath,
                 ]);
 
                 // Buat form pengajuan dengan status 'diproses'
                 FormPengajuanMagang::create([
                     'pengajuan_id' => $berkas->id,
                     'status' => 'diproses',
-                    'keterangan' => 'Dokumen telah dikirim, diproses review admin'
+                    'keterangan' => 'Dokumen telah dikirim, diproses review admin',
                 ]);
 
                 // Update status pengajuan ke diproses
@@ -183,7 +185,7 @@ class PengajuanMagangController extends Controller
             return redirect()->route('mahasiswa.pengajuan-magang')
                 ->with('success', 'Pengajuan magang berhasil dikirim! Status pengajuan telah diubah menjadi diproses review.');
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return back()
                 ->withErrors($e->validator)
                 ->withInput()
@@ -195,12 +197,12 @@ class PengajuanMagangController extends Controller
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
-                'request_data' => $request->except(['cv', 'transkrip_nilai', 'portfolio'])
+                'request_data' => $request->except(['cv', 'transkrip_nilai', 'portfolio']),
             ]);
 
             // Show actual error in debug mode
             if (config('app.debug')) {
-                return back()->with('error', 'Debug Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+                return back()->with('error', 'Debug Error: '.$e->getMessage().' in '.$e->getFile().':'.$e->getLine());
             }
 
             return back()->with('error', 'Terjadi kesalahan sistem. Silakan coba lagi atau hubungi admin.');
