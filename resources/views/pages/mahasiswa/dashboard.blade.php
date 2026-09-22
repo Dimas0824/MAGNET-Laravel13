@@ -2,6 +2,7 @@
 
 use function Livewire\Volt\{state, mount, computed};
 use App\Models\FinalRankRecommendation;
+use App\Models\LowonganMagang;
 use Illuminate\Support\Facades\DB;
 
 state(['recommendations', 'preferences_data', 'all_alternatives']);
@@ -9,10 +10,16 @@ state(['recommendations', 'preferences_data', 'all_alternatives']);
 mount(function () {
     $userId = auth('mahasiswa')->user()->id;
 
-    // Get top 10 unique recommendations
+    // Latest final_rank per lowongan for this mahasiswa (parameterized).
+    $latestRecommendationsSubquery = DB::table('final_rank_recommendation')
+        ->select('lowongan_magang_id', DB::raw('MAX(created_at) as latest_created_at'))
+        ->where('mahasiswa_id', $userId)
+        ->groupBy('lowongan_magang_id');
+
     $uniqueRecommendations = DB::table('final_rank_recommendation as frr1')
-        ->join(DB::raw("(SELECT lowongan_magang_id, MAX(created_at) as latest_created_at FROM final_rank_recommendation WHERE mahasiswa_id = {$userId} GROUP BY lowongan_magang_id) as latest"), function ($join) {
-            $join->on('frr1.lowongan_magang_id', '=', 'latest.lowongan_magang_id')->on('frr1.created_at', '=', 'latest.latest_created_at');
+        ->joinSub($latestRecommendationsSubquery, 'latest', function ($join) {
+            $join->on('frr1.lowongan_magang_id', '=', 'latest.lowongan_magang_id')
+                ->on('frr1.created_at', '=', 'latest.latest_created_at');
         })
         ->where('frr1.mahasiswa_id', $userId)
         ->select('frr1.*')
@@ -20,29 +27,32 @@ mount(function () {
         ->take(10)
         ->get();
 
-    // Load recommendations with related data
-    $this->recommendations = $uniqueRecommendations
-        ->map(function ($item) {
-            $lowonganMagang = DB::table('lowongan_magang')->where('id', $item->lowongan_magang_id)->first();
+    // Single eager-loaded lookup to avoid N+1.
+    $lowonganById = LowonganMagang::with(['perusahaan.bidangIndustri', 'pekerjaan', 'lokasiMagang'])
+        ->whereIn('id', $uniqueRecommendations->pluck('lowongan_magang_id'))
+        ->get()
+        ->keyBy('id');
 
-            if (!$lowonganMagang) {
+    $this->recommendations = $uniqueRecommendations
+        ->map(function ($item) use ($lowonganById) {
+            /** @var \App\Models\LowonganMagang|null $lowonganMagang */
+            $lowonganMagang = $lowonganById->get($item->lowongan_magang_id);
+
+            if (! $lowonganMagang) {
                 return null;
             }
 
-            $perusahaan = DB::table('perusahaan')->where('id', $lowonganMagang->perusahaan_id)->first();
-            $pekerjaan = DB::table('pekerjaan')->where('id', $lowonganMagang->pekerjaan_id)->first();
-            $bidangIndustri = $perusahaan ? DB::table('bidang_industri')->where('id', $perusahaan->bidang_industri_id)->first() : null;
+            $perusahaan = $lowonganMagang->perusahaan;
 
             return [
                 'rank' => $item->rank,
                 'lowongan_id' => $item->lowongan_magang_id,
-                'pekerjaan' => $pekerjaan->nama ?? '',
-                'bidang_industri' => $bidangIndustri->nama ?? '',
+                'pekerjaan' => $lowonganMagang->pekerjaan->nama ?? '',
+                'bidang_industri' => $perusahaan->bidangIndustri->nama ?? '',
                 'lokasi' => $this->categorizeLocation($perusahaan->lokasi ?? ''),
                 'jenis_magang' => $lowonganMagang->jenis_magang ?? '',
                 'open_remote' => $lowonganMagang->open_remote ?? '',
                 'nama_perusahaan' => $perusahaan->nama ?? '',
-                'nama_lowongan' => $lowonganMagang->nama ?? '',
             ];
         })
         ->filter()
