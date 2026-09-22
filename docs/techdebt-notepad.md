@@ -182,3 +182,29 @@ IN PROGRESS:
 PENDING after both items merged: Item5 repo-wide Pint; final suite+coverage+push.
 
 NOTE: DB contention — must NOT run tests while bg_f66976f7 runs.
+
+## IDE / NEXT (tomorrow)
+### IDE-REVERB: ganti polling chat -> Laravel Reverb (websocket)
+Alasan: app jalan di FrankenPHP + Docker/Linux (long-running), jadi cocok websocket.
+Rencana:
+- composer require laravel/reverb; php artisan reverb:install
+- Jalankan container 'reverb' (php artisan reverb:start --host=0.0.0.0 --port=8080)
+- Konfigurasi broadcasting: BROADCAST_CONNECTION=reverb, REVERB_APP_ID/KEY/SECRET/HOST/PORT
+- Buat event ChatMessageSent implements ShouldBroadcast (channel private kontrak.{id})
+- Ganti polling di resources/views/pages/**/konsul-dospem.blade.php + dosen/komunikasi-mahasiswa + masukan-magang
+  dgn Echo/Reverb listener (wire:model live -> event)
+- Reverse proxy / Caddy (FrankenPHP) route /app & /apps ke reverb di compose
+- Test: Event::fake / Broadcast::fake; pastikan suite tetap hijau
+Files terkait hari ini: Chat model, kontrak_magang, chat table.
+
+### STATUS (this session, pushed @ a8acedf)
+- Item4 KriteriaLokasiMagang rename DONE
+- Item3 ReferencePoint max_score DONE
+- Item1 private-disk PII + signed/authorized download DONE (134 tests, 86.4% cov)
+- Item2 mass-assignment hardening: NOT DONE (agent cancelled before writing) — TODO
+- Item5 repo-wide Pint: NOT DONE — TODO
+- Full verification: unit 15 pass, feature 119 pass, TOTAL 134 pass, 0 fail.
+
+### FRANKENPHP GOAL (active)
+- Verify docker-compose FrankerPHP stack builds & runs without error
+- Optimize the Docker image
