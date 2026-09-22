@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+    <url>
+        <loc>http://localhost:8000/login</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/register</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/forgot-password</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/reset-password/{token}</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/verify-email</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/verify-email/{id}/{hash}</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/confirm-password</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/pengembang</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/tata-tertib</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/cara-magang</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/tips-memilih-magang</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/dashboard</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/profile</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/template/pdf/{file_name}</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/kelola-data-master/data-mahasiswa</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/kelola-data-master/detail-mahasiswa/{id}</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/kelola-data-master/data-dosen</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/kelola-data-master/detail-dosen/{id}</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/kelola-data-master/data-perusahaan</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/kelola-data-master/detail-perusahaan/{id}</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/magang/lowongan</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/magang/detail-lowongan/{id}</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/magang/pengajuan-izin-magang</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/magang/detail-pengajuan/{id}</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/magang/pembaruan-status-magang</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/magang/detail-pembaruan-status-magang/{id}</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/magang/aturan-magang</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/laporan-statistik-magang</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/evaluasi-sistem-rekomendasi</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/persiapan</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/pengajuan-magang</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/formulir-pengajuan</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/konsul-dospem</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/pembaruan-status</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/log-mahasiswa</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/search</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/detail-perusahaan</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/notifikasi</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/profil-perusahaan</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/detail-log</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/log-magang</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/tambah-log</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/pencarian</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/riwayat-rekomendasi</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/riwayat-rekomendasi/detail</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/saran-dari-dosen</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/mahasiswa-bimbingan</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/mahasiswa-bimbingan/{id}</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/komunikasi</loc>
+    
+            </url>
+    <url>
+        <loc>http://localhost:8000/komunikasi/mahasiswa</loc>
+    
+            </url>
+</urlset>
