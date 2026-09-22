@@ -208,3 +208,17 @@ Files terkait hari ini: Chat model, kontrak_magang, chat table.
 ### FRANKENPHP GOAL (active)
 - Verify docker-compose FrankerPHP stack builds & runs without error
 - Optimize the Docker image
+
+## SESSION COMPLETE — ALL REQUESTS DONE (HEAD e3ec5d9, pushed)
+1) Item2 mass-assignment hardening: DONE (c7bd50c) — all sensitive fields removed from $fillable,
+   factories/seeder/helpers/views/controller fixed with forceFill/forceCreate. 153 tests green.
+2) Item5 repo-wide Pint: DONE (df91f9c) — 94 files PSR-12, pint --test passes.
+3) FrankenPHP: DONE (e3ec5d9) — Dockerfile (3-stage, optimized), compose (app+worker+redis+mysql+migrate),
+   Caddyfile, entrypoint, php.ini (opcache+JIT), .dockerignore, docker/README.md.
+   VERIFIED under podman: image builds, 4 containers healthy, HTTP 200 on / /login /cara-magang /up,
+   redis cache+queue OK, migrations run, runs as non-root www-data, no .env in image, no static state.
+Also earlier: Item3 (ReferencePoint max_score) + Item4 (KriteriaLokasiMagang rename) DONE (98da573).
+
+FINAL: 153 tests pass, coverage 86.4%, pint clean, FrankenPHP runs clean & safe.
+
+NEXT (deferred): Reverb migration (chat polling -> websocket). Reverb proxy via Caddy /app -> reverb container.
