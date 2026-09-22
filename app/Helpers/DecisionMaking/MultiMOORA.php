@@ -21,16 +21,26 @@ use Illuminate\Support\Facades\DB;
 class MultiMOORA
 {
     private Carbon $now;
+
     private Mahasiswa $mahasiswa;
+
     private KriteriaPekerjaan $kriteriaPekerjaan;
+
     private KriteriaOpenRemote $kriteriaOpenRemote;
+
     private KriteriaBidangIndustri $kriteriaBidangIndustri;
+
     private KriteriaJenisMagang $kriteriaJenisMagang;
+
     private KriteriaLokasiMagang $kriteriaLokasiMagang;
 
     /**
-     * @var array
+     * Number of available lowongan magang, resolved once per instance so the
+     * (potentially expensive) aggregate count is not re-issued for every stage
+     * of the pipeline.
      */
+    private ?int $lowonganCount = null;
+
     private array $encodedAlternatives;
 
     /**
@@ -77,16 +87,17 @@ class MultiMOORA
      */
     private array $fmfResult;
 
-    public function __construct(Mahasiswa $mahasiswa, array $dataEncoding = null)
+    public function __construct(Mahasiswa $mahasiswa, ?array $dataEncoding = null)
     {
         $this->mahasiswa = $mahasiswa;
+        $this->lowonganCount = $this->lowonganCount();
 
         if ($dataEncoding) {
             $this->encodedAlternatives = $dataEncoding;
         } else {
             $this->encodedAlternatives = EncodedAlternatives::where('mahasiswa_id', $this->mahasiswa->id)
                 ->orderBy('updated_at', 'desc')
-                ->limit(LowonganMagang::count())
+                ->limit($this->lowonganCount)
                 ->get()
                 ->toArray();
         }
@@ -96,6 +107,17 @@ class MultiMOORA
         $this->kriteriaBidangIndustri = $this->mahasiswa->kriteriaBidangIndustri;
         $this->kriteriaJenisMagang = $this->mahasiswa->kriteriaJenisMagang;
         $this->kriteriaLokasiMagang = $this->mahasiswa->kriteriaLokasiMagang;
+    }
+
+    /**
+     * Lazily resolve and memoize the lowongan count so a single pipeline run
+     * issues exactly one aggregate query, while still working when the
+     * constructor is bypassed (e.g. white-box tests using
+     * newInstanceWithoutConstructor()).
+     */
+    private function lowonganCount(): int
+    {
+        return $this->lowonganCount ??= LowonganMagang::count();
     }
 
     public function computeMultiMOORA(): void
@@ -116,6 +138,7 @@ class MultiMOORA
 
     /**
      * Compute euclidean normalization
+     *
      * @return array<string, int[]>
      */
     private function euclideanNormalization(array $encodedAlternatives): array
@@ -141,7 +164,7 @@ class MultiMOORA
             'bidang_industri' => $bidangIndustriList,
             'lokasi_magang' => $lokasiMagangList,
             'open_remote' => $openRemoteList,
-            'jenis_magang' => $jenisMagangList
+            'jenis_magang' => $jenisMagangList,
         ];
 
         $euclideanNormalizationList = [];
@@ -154,9 +177,6 @@ class MultiMOORA
 
     /**
      * Compute vector normalization for all alternatives data
-     * @param array $encodedAlternatives
-     * @param array $euclideanNormalization
-     * @return void
      */
     private function vectorNormalization(array $encodedAlternatives, array $euclideanNormalization): void
     {
@@ -171,7 +191,7 @@ class MultiMOORA
             'bidang_industri' => $bidangIndustriList,
             'lokasi_magang' => $lokasiMagangList,
             'open_remote' => $openRemoteList,
-            'jenis_magang' => $jenisMagangList
+            'jenis_magang' => $jenisMagangList,
         ];
 
         /**
@@ -180,8 +200,8 @@ class MultiMOORA
          * This function takes a specific criteria and a list of values, then normalizes each value
          * by dividing it with the corresponding Euclidean normalization value for that criteria.
          *
-         * @param string $criteria The key used to access the corresponding normalization value.
-         * @param array $list An array of numeric values to normalize.
+         * @param  string  $criteria  The key used to access the corresponding normalization value.
+         * @param  array  $list  An array of numeric values to normalize.
          * @return array An array of normalized values.
          */
         $computeVectorNormalization = function (string $criteria, array $list) use ($euclideanNormalization): array {
@@ -222,7 +242,7 @@ class MultiMOORA
                 'bidang_industri' => $tempResult['bidang_industri'][$i],
                 'lokasi_magang' => $tempResult['lokasi_magang'][$i],
                 'created_at' => $this->now,
-                'updated_at' => $this->now
+                'updated_at' => $this->now,
             ];
         }
 
@@ -235,7 +255,6 @@ class MultiMOORA
 
     /**
      * Compute ratio system. The result of this computation will be place in the MultiMOORA object attribute
-     * @return void
      */
     private function computeRatioSystem(): void
     {
@@ -244,7 +263,7 @@ class MultiMOORA
             'open_remote' => $this->kriteriaOpenRemote->bobot,
             'bidang_industri' => $this->kriteriaBidangIndustri->bobot,
             'jenis_magang' => $this->kriteriaJenisMagang->bobot,
-            'lokasi_magang' => $this->kriteriaLokasiMagang->bobot
+            'lokasi_magang' => $this->kriteriaLokasiMagang->bobot,
         ];
 
         $ratioSystemResult = array_map(function (array $alt) use ($weights) {
@@ -255,8 +274,8 @@ class MultiMOORA
                     $alt['open_remote'] * $weights['open_remote'],
                     $alt['bidang_industri'] * $weights['bidang_industri'],
                     $alt['jenis_magang'] * $weights['jenis_magang'],
-                    $alt['lokasi_magang'] * $weights['lokasi_magang']
-                ])
+                    $alt['lokasi_magang'] * $weights['lokasi_magang'],
+                ]),
             ];
         }, $this->vectorNormalizationResult);
 
@@ -273,7 +292,7 @@ class MultiMOORA
                 'score' => $item['score'],
                 'rank' => $rank++,
                 'created_at' => $this->now,
-                'updated_at' => $this->now
+                'updated_at' => $this->now,
             ];
         }
 
@@ -286,7 +305,6 @@ class MultiMOORA
 
     /**
      * Compute reference point. The result of this computation will be place in the MultiMOORA object attribute
-     * @return void
      */
     private function computeReferencePoint(): void
     {
@@ -295,7 +313,7 @@ class MultiMOORA
             'open_remote' => $this->kriteriaOpenRemote->bobot,
             'bidang_industri' => $this->kriteriaBidangIndustri->bobot,
             'jenis_magang' => $this->kriteriaJenisMagang->bobot,
-            'lokasi_magang' => $this->kriteriaLokasiMagang->bobot
+            'lokasi_magang' => $this->kriteriaLokasiMagang->bobot,
         ];
 
         $referencePointVector = [
@@ -303,7 +321,7 @@ class MultiMOORA
             'open_remote' => 0.0,
             'bidang_industri' => 0.0,
             'jenis_magang' => 0.0,
-            'lokasi_magang' => 0.0
+            'lokasi_magang' => 0.0,
         ];
 
         // Find the maximum value for each criterion across all alternatives.
@@ -334,7 +352,7 @@ class MultiMOORA
                 'jenis_magang' => $jenisMagangDev,
                 'bidang_industri' => $bidangIndustriDev,
                 'lokasi_magang' => $lokasiMagangDev,
-                'max_score' => $maxDeviation
+                'max_score' => $maxDeviation,
             ];
         }, $this->vectorNormalizationResult);
 
@@ -358,7 +376,7 @@ class MultiMOORA
                 'max_score' => $item['max_score'],
                 'rank' => $rank++,
                 'created_at' => $this->now,
-                'updated_at' => $this->now
+                'updated_at' => $this->now,
             ];
         }
 
@@ -371,7 +389,6 @@ class MultiMOORA
 
     /**
      * Compute Full Multiplicative Form (FMF). The result of this computation will be place in the MultiMOORA object attribute
-     * @return void
      */
     private function computeFullMultiplicativeForm(): void
     {
@@ -380,7 +397,7 @@ class MultiMOORA
             'open_remote' => $this->kriteriaOpenRemote->bobot,
             'bidang_industri' => $this->kriteriaBidangIndustri->bobot,
             'jenis_magang' => $this->kriteriaJenisMagang->bobot,
-            'lokasi_magang' => $this->kriteriaLokasiMagang->bobot
+            'lokasi_magang' => $this->kriteriaLokasiMagang->bobot,
         ];
 
         $fmfScores = array_map(function (array $alt) use ($weights): array {
@@ -389,12 +406,12 @@ class MultiMOORA
                 pow($alt['open_remote'], $weights['open_remote']),
                 pow($alt['bidang_industri'], $weights['bidang_industri']),
                 pow($alt['jenis_magang'], $weights['jenis_magang']),
-                pow($alt['lokasi_magang'], $weights['lokasi_magang'])
+                pow($alt['lokasi_magang'], $weights['lokasi_magang']),
             ];
 
             return [
                 'lowongan_magang_id' => $alt['lowongan_magang_id'],
-                'score' => array_reduce($scores, fn($carry, $item) => $carry * $item, 1),
+                'score' => array_reduce($scores, fn ($carry, $item) => $carry * $item, 1),
             ];
         }, $this->vectorNormalizationResult);
 
@@ -412,7 +429,7 @@ class MultiMOORA
                 'score' => $item['score'],
                 'rank' => $rank++,
                 'created_at' => $this->now,
-                'updated_at' => $this->now
+                'updated_at' => $this->now,
             ];
         }
 
@@ -425,6 +442,7 @@ class MultiMOORA
 
     /**
      * Compute final rank of alternatives with MultiMOORA method
+     *
      * @return array
      */
     private function computeFinalRank(): void
@@ -451,7 +469,7 @@ class MultiMOORA
                 'ratio_system_rank' => $ratioSystemRanks[$id] ?? null,
                 'reference_point_rank' => $referencePointRanks[$id] ?? null,
                 'fmf_rank' => $fmfRanks[$id] ?? null,
-                'avg_rank' => $avgRank
+                'avg_rank' => $avgRank,
             ];
         }
 
@@ -464,21 +482,21 @@ class MultiMOORA
         // reference the correct stage rows regardless of insertion order.
         $ratioSystemIDs = RatioSystem::where('mahasiswa_id', $this->mahasiswa->id)
             ->orderBy('id', 'desc')
-            ->limit(LowonganMagang::count())
+            ->limit($this->lowonganCount())
             ->get()
             ->mapWithKeys(fn ($row) => [$row->lowongan_magang_id => $row->id])
             ->all();
 
         $referencePointIDs = ReferencePoint::where('mahasiswa_id', $this->mahasiswa->id)
             ->orderBy('id', 'desc')
-            ->limit(LowonganMagang::count())
+            ->limit($this->lowonganCount())
             ->get()
             ->mapWithKeys(fn ($row) => [$row->lowongan_magang_id => $row->id])
             ->all();
 
         $fmfIDs = FullMultiplicativeForm::where('mahasiswa_id', $this->mahasiswa->id)
             ->orderBy('id', 'desc')
-            ->limit(LowonganMagang::count())
+            ->limit($this->lowonganCount())
             ->get()
             ->mapWithKeys(fn ($row) => [$row->lowongan_magang_id => $row->id])
             ->all();
@@ -497,7 +515,7 @@ class MultiMOORA
                 'avg_rank' => $item['avg_rank'],
                 'rank' => $rank++,
                 'created_at' => $this->now,
-                'updated_at' => $this->now
+                'updated_at' => $this->now,
             ];
         }
 

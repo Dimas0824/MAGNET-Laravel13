@@ -2,12 +2,16 @@
 
 use App\Helpers\DecisionMaking\DataPreprocessing;
 use App\Helpers\DecisionMaking\MultiMOORA;
+use App\Models\BidangIndustri;
 use App\Models\EncodedAlternatives;
 use App\Models\FinalRankRecommendation;
 use App\Models\FullMultiplicativeForm;
+use App\Models\Pekerjaan;
+use App\Models\Perusahaan;
 use App\Models\RatioSystem;
 use App\Models\ReferencePoint;
 use App\Models\VectorNormalization;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
@@ -122,6 +126,37 @@ it('is idempotent-safe: rerunning appends a fresh consistent snapshot', function
     }
 });
 
+it('queries the lowongan count once per run', function () {
+    $mahasiswa = mahasiswaDenganPreferensi();
+
+    $lowongan = collect();
+    for ($i = 0; $i < 4; $i++) {
+        $lowongan->push(lowonganMagang([
+            'open_remote' => 'ya',
+            'jenis_magang' => 'berbayar',
+        ]));
+    }
+
+    foreach ($lowongan as $l) {
+        DataPreprocessing::dataCategorization($l);
+    }
+
+    DataPreprocessing::dataEncoding($mahasiswa);
+
+    DB::enableQueryLog();
+    (new MultiMOORA($mahasiswa))->computeMultiMOORA();
+    $log = DB::getQueryLog();
+    DB::disableQueryLog();
+
+    $countQueries = collect($log)->filter(function (array $entry) {
+        $sql = strtolower($entry['query']);
+
+        return str_contains($sql, 'count(*)') && str_contains($sql, 'from `lowongan_magang`');
+    });
+
+    expect($countQueries)->toHaveCount(1);
+});
+
 it('keeps FK integrity when the three methods rank alternatives differently', function () {
     $mahasiswa = mahasiswaDenganPreferensi();
 
@@ -140,13 +175,13 @@ it('keeps FK integrity when the three methods rank alternatives differently', fu
 
     $lowongan = collect();
     foreach ($specs as $spec) {
-        $perusahaan = App\Models\Perusahaan::factory()->create([
-            'bidang_industri_id' => App\Models\BidangIndustri::where('nama', $spec['bidang'])->value('id'),
+        $perusahaan = Perusahaan::factory()->create([
+            'bidang_industri_id' => BidangIndustri::where('nama', $spec['bidang'])->value('id'),
         ]);
         $lowongan->push(lowonganMagang([
             'open_remote' => $spec['open_remote'],
             'jenis_magang' => $spec['jenis_magang'],
-            'pekerjaan_id' => App\Models\Pekerjaan::where('nama', $spec['pekerjaan'])->value('id'),
+            'pekerjaan_id' => Pekerjaan::where('nama', $spec['pekerjaan'])->value('id'),
             'perusahaan_id' => $perusahaan->id,
         ]));
     }
