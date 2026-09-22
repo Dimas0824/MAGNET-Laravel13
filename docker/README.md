@@ -9,6 +9,7 @@ MAGNET runs on **FrankenPHP** (PHP 8.3 + Caddy built in) with a dedicated
 |-----------|----------------------|------------------------------------------|
 | `app`     | `magnet-app:local`   | FrankenPHP web server (`:8001` -> `:80`) |
 | `worker`  | `magnet-app:local`   | `php artisan queue:work` (Redis)         |
+| `reverb`  | `magnet-app:local`   | `php artisan reverb:start` (`:8080`)     |
 | `migrate` | `magnet-app:local`   | one-shot `migrate --force` (profile `setup`) |
 | `redis`   | `redis:7-alpine`     | cache + queue                            |
 | `db`      | `mysql:8.0`          | database (`:3307` -> `:3306`)            |
@@ -37,10 +38,29 @@ App: http://localhost:8001  ·  Health: http://localhost:8001/up
 ## Verify
 
 ```powershell
-podman ps                                      # all 4 Up
+podman ps                                      # all containers Up
 (Invoke-WebRequest http://127.0.0.1:8001/up).StatusCode   # 200
 podman logs magnet_app | Select-String "FrankenPHP started"
+podman logs magnet_reverb | Select-String "Starting server"
 podman exec magnet_app php artisan about
+```
+
+## Realtime (Reverb)
+
+Chat uses **Laravel Reverb** (websockets) instead of HTTP polling.
+
+- `reverb` service runs `php artisan reverb:start --host=0.0.0.0 --port=8080`; the
+  browser connects directly to `ws://localhost:8080`.
+- `BROADCAST_CONNECTION=reverb`; keys via `REVERB_APP_ID/KEY/SECRET`.
+- `VITE_REVERB_*` are baked into the JS bundle at build time — set them (or `APP_URL`)
+  before `podman build` when deploying to a non-localhost host.
+- Server side: `App\Events\ChatMessageSent` (ShouldBroadcast) is queued, so the
+  **worker** must be running for messages to reach subscribers.
+
+Quick check that the broadcast path works:
+
+```powershell
+podman logs magnet_worker | Select-String "ChatMessageSent"
 ```
 
 ## Safety notes
