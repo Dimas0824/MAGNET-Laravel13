@@ -26,11 +26,11 @@ mount(function () {
 $jobs = computed(function () {
     $query = LowonganMagang::with(['perusahaan', 'pekerjaan', 'lokasi_magang'])->where('status', $this->filterByStatus);
 
-    // Apply search filter
+    // Apply search filter (lowongan has no "nama" column; search by related
+    // company name and location).
     if (!empty($this->searchQuery)) {
         $query->where(function ($q) {
-            $q->where('nama', 'LIKE', "%{$this->searchQuery}%")
-                ->orWhereHas('perusahaan', function ($company) {
+            $q->orWhereHas('perusahaan', function ($company) {
                     $company->where('nama', 'LIKE', "%{$this->searchQuery}%");
                 })
                 ->orWhereHas('lokasi_magang', function ($location) {
@@ -61,7 +61,7 @@ $selectJob = function ($jobId) {
     $this->isLoadingDetail = true;
 
     try {
-        $this->selectedJob = LowonganMagang::with(['perusahaan.bidangIndustri', 'pekerjaan', 'lokasi_magang', 'kontrakMagang.ulasanMagang.mahasiswa'])->findOrFail($jobId);
+        $this->selectedJob = LowonganMagang::with(['perusahaan.bidangIndustri', 'pekerjaan', 'lokasi_magang', 'kontrak_magang.ulasanMagang.mahasiswa'])->findOrFail($jobId);
     } catch (\Exception $e) {
         session()->flash('error', 'Lowongan tidak ditemukan.');
         $this->selectedJob = null;
@@ -262,7 +262,7 @@ $getFilterOptions = computed(function () {
 
                     <div class="divide-y divide-gray-100 max-h-[600px] overflow-y-auto">
                         @forelse($this->jobs as $job)
-                            <div onclick="window.location='{{ route('mahasiswa.detail-perusahaan') }}?id={{ $job->id }}'"
+                            <div onclick="window.location='{{ route('mahasiswa.detail-lowongan-magang', $job->id) }}'"
                                 role="button"
                                 class="p-4 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:border-blue-300 cursor-pointer transition-all duration-200 group border-r-2 border-r-transparent {{ $selectedJob?->id === $job->id ? 'bg-blue-50/50 border-r-blue-500' : '' }}">
                                 <div class="flex items-start gap-4">
