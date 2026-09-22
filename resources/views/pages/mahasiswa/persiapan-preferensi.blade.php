@@ -1,11 +1,22 @@
 <?php
 
-use Flux\Flux;
-use function Livewire\Volt\{layout, state, on};
-use Illuminate\Support\Facades\DB;
-use App\Models\{BidangIndustri, Pekerjaan, LokasiMagang, KriteriaPekerjaan, KriteriaBidangIndustri, KriteriaJenisMagang, KriteriaLokasiMagang, KriteriaOpenRemote, Mahasiswa};
-use App\Helpers\DecisionMaking\ROC;
 use App\Events\MahasiswaPreferenceUpdated;
+use App\Helpers\DecisionMaking\ROC;
+use App\Models\BidangIndustri;
+use App\Models\KriteriaBidangIndustri;
+use App\Models\KriteriaJenisMagang;
+use App\Models\KriteriaLokasiMagang;
+use App\Models\KriteriaOpenRemote;
+use App\Models\KriteriaPekerjaan;
+use App\Models\LokasiMagang;
+use App\Models\Mahasiswa;
+use App\Models\Pekerjaan;
+use Flux\Flux;
+use Illuminate\Support\Facades\DB;
+
+use function Livewire\Volt\layout;
+use function Livewire\Volt\on;
+use function Livewire\Volt\state;
 
 layout('components.layouts.guest.with-navbar');
 
@@ -57,43 +68,45 @@ $storePreferensiMahasiswa = function () {
     $status = 'success';
     $message = 'Data preferensi magang berhasil dibuat';
 
+    $totalCriteria = config('recommendation-system.roc.total_criteria');
+
     try {
-        DB::transaction(function () {
+        DB::transaction(function () use ($totalCriteria) {
             $mhs_id = auth('mahasiswa')->user()->id;
 
             KriteriaPekerjaan::create([
                 'pekerjaan_id' => $this->pekerjaan,
                 'mahasiswa_id' => $mhs_id,
                 'rank' => $this->pekerjaan_rank,
-                'bobot' => ROC::getWeight($this->pekerjaan_rank, 5),
+                'bobot' => ROC::getWeight($this->pekerjaan_rank, $totalCriteria),
             ]);
 
             KriteriaBidangIndustri::create([
                 'bidang_industri_id' => $this->bidang_industri,
                 'mahasiswa_id' => $mhs_id,
                 'rank' => $this->bidang_industri_rank,
-                'bobot' => ROC::getWeight($this->bidang_industri_rank, 5),
+                'bobot' => ROC::getWeight($this->bidang_industri_rank, $totalCriteria),
             ]);
 
             KriteriaLokasiMagang::create([
                 'lokasi_magang_id' => $this->lokasi_magang,
                 'mahasiswa_id' => $mhs_id,
                 'rank' => $this->lokasi_magang_rank,
-                'bobot' => ROC::getWeight($this->lokasi_magang_rank, 5),
+                'bobot' => ROC::getWeight($this->lokasi_magang_rank, $totalCriteria),
             ]);
 
             KriteriaJenisMagang::create([
                 'jenis_magang' => $this->jenis_magang,
                 'mahasiswa_id' => $mhs_id,
                 'rank' => $this->jenis_magang_rank,
-                'bobot' => ROC::getWeight($this->jenis_magang_rank, 5),
+                'bobot' => ROC::getWeight($this->jenis_magang_rank, $totalCriteria),
             ]);
 
             KriteriaOpenRemote::create([
                 'open_remote' => $this->open_remote,
                 'mahasiswa_id' => $mhs_id,
                 'rank' => $this->open_remote_rank,
-                'bobot' => ROC::getWeight($this->open_remote_rank, 5),
+                'bobot' => ROC::getWeight($this->open_remote_rank, $totalCriteria),
             ]);
 
             $mahasiswa = Mahasiswa::find(auth('mahasiswa')->user()->id);
@@ -112,8 +125,8 @@ $storePreferensiMahasiswa = function () {
     Flux::modal('response-modal')->show();
 };
 
-$redirectToDashboard = fn() => redirect()->route('dashboard');
-$resetPage = fn() => redirect()->back();
+$redirectToDashboard = fn () => redirect()->route('dashboard');
+$resetPage = fn () => redirect()->back();
 
 ?>
 
