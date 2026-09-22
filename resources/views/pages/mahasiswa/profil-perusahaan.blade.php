@@ -8,40 +8,36 @@ layout('components.layouts.user.main');
 
 state([
     'perusahaan',
+    'perusahaanId' => null,
+    'lowonganId' => null,
+    'totalUlasan' => 0,
+    'rataRating' => 0,
     'isDataNotFound' => false
 ]);
 
 mount(function (int $id) {
+    $this->perusahaanId = $id;
+
     try {
         $this->perusahaan = Perusahaan::findOrFail($id);
     } catch (\Exception $e) {
         $this->isDataNotFound = true;
+
+        return;
     }
+
+    // Compute rating statistics once on mount (no side effects in getters).
+    $ulasanData = UlasanMagang::whereHas('kontrakMagang.lowonganMagang', function ($query) use ($id) {
+        $query->where('perusahaan_id', $id);
+    })->get();
+
+    $this->totalUlasan = $ulasanData->count();
+    $this->rataRating = $this->totalUlasan > 0 ? round($ulasanData->avg('rating'), 1) : 0;
 });
-
-$calculateRatingStats = function () {
-    try {
-        $ulasanData = UlasanMagang::whereHas('kontrakMagang.lowonganMagang', function ($query) {
-            $query->where('perusahaan_id', $this->perusahaanId);
-        })->get();
-
-        $this->totalUlasan = $ulasanData->count();
-
-        if ($this->totalUlasan > 0) {
-            $this->rataRating = round($ulasanData->avg('rating'), 1);
-            $this->perusahaan->update(['rating' => $this->rataRating]);
-        } else {
-            $this->rataRating = 0;
-        }
-    } catch (\Exception $e) {
-        $this->totalUlasan = 0;
-        $this->rataRating = 0;
-    }
-};
 
 $lowonganLainnya = computed(function () {
     try {
-        if (!$this->perusahaan) {
+        if (! $this->perusahaan) {
             return collect();
         }
 
@@ -49,7 +45,7 @@ $lowonganLainnya = computed(function () {
             ->lowonganMagang()
             ->with(['pekerjaan', 'lokasiMagang'])
             ->where('status', 'buka')
-            ->where('id', '!=', $this->lowonganId)
+            ->when($this->lowonganId, fn ($q) => $q->where('id', '!=', $this->lowonganId))
             ->take(3)
             ->get();
     } catch (\Exception $e) {
@@ -112,12 +108,6 @@ $lowonganLainnya = computed(function () {
                                 <flux:icon.star class="h-6 w-6 text-yellow-600" />
                             </div>
                             <h4 class="font-semibold text-gray-900">
-                                @php
-                                    $totalUlasan = 20;
-                                    $rataRating = 3.2;
-                                @endphp
-
-
                                 @if ($totalUlasan > 0)
                                     {{ $rataRating }}/5
                                 @else
