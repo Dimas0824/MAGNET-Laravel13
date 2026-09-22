@@ -24,6 +24,10 @@ Route::middleware('role:admin,mahasiswa,dosen')
         Volt::route('profile', 'pages.user.profile')->name('profile');
 
         Route::get('template/pdf/{file_name}', [TemplateController::class, 'previewFile'])->name('template-view');
+
+        // Authorized download of PII documents from the private disk.
+        Route::get('berkas-pengajuan/{berkas}/{type}', [PengajuanMagangController::class, 'downloadBerkas'])
+            ->name('berkas.download');
     });
 
 Route::name('admin.')

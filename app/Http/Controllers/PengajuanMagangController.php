@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BerkasPengajuanMagang;
 use App\Models\FormPengajuanMagang;
+use App\Models\KontrakMagang;
 use App\Models\Mahasiswa;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,11 +16,16 @@ use Illuminate\Validation\ValidationException;
 class PengajuanMagangController extends Controller
 {
     /**
+     * Private disk used to store PII documents (CV, transcript, portfolio).
+     */
+    private const DISK = 'private';
+
+    /**
      * Buat direktori jika belum ada
      */
     private function ensureDirectoryExists($path)
     {
-        $fullPath = storage_path('app/public/'.$path);
+        $fullPath = Storage::disk(self::DISK)->path($path);
 
         if (! is_dir($fullPath)) {
             mkdir($fullPath, 0755, true);
@@ -138,8 +144,8 @@ class PengajuanMagangController extends Controller
 
                 // Hapus file-file lama
                 foreach (['cv', 'transkrip_nilai', 'portfolio'] as $file) {
-                    if ($existing->$file && Storage::disk('public')->exists($existing->$file)) {
-                        Storage::disk('public')->delete($existing->$file);
+                    if ($existing->$file && Storage::disk(self::DISK)->exists($existing->$file)) {
+                        Storage::disk(self::DISK)->delete($existing->$file);
                     }
                 }
                 $existing->delete();
@@ -154,13 +160,13 @@ class PengajuanMagangController extends Controller
             $cvFileName = $this->generateFileName($mahasiswa, 'cv');
             $transkripFileName = $this->generateFileName($mahasiswa, 'transkrip');
 
-            $cvPath = $request->file('cv')->storeAs('pengajuan-magang/cv', $cvFileName, 'public');
-            $transkripPath = $request->file('transkrip_nilai')->storeAs('pengajuan-magang/transkrip', $transkripFileName, 'public');
+            $cvPath = $request->file('cv')->storeAs('pengajuan-magang/cv', $cvFileName, self::DISK);
+            $transkripPath = $request->file('transkrip_nilai')->storeAs('pengajuan-magang/transkrip', $transkripFileName, self::DISK);
 
             $portfolioPath = null;
             if ($request->hasFile('portfolio')) {
                 $portfolioFileName = $this->generateFileName($mahasiswa, 'portfolio');
-                $portfolioPath = $request->file('portfolio')->storeAs('pengajuan-magang/portfolio', $portfolioFileName, 'public');
+                $portfolioPath = $request->file('portfolio')->storeAs('pengajuan-magang/portfolio', $portfolioFileName, self::DISK);
             }
 
             // Simpan data ke database dalam transaksi
@@ -204,5 +210,54 @@ class PengajuanMagangController extends Controller
 
             return back()->with('error', 'Terjadi kesalahan sistem. Silakan coba lagi atau hubungi admin.');
         }
+    }
+
+    /**
+     * Stream a PII document (cv|transkrip_nilai|portfolio) from the private disk.
+     *
+     * Authorized for: the owning mahasiswa, any admin, or a dosen who supervises
+     * a contract for that mahasiswa.
+     */
+    public function downloadBerkas(BerkasPengajuanMagang $berkas, string $type)
+    {
+        abort_unless(in_array($type, ['cv', 'transkrip_nilai', 'portfolio'], true), 404);
+
+        $path = $berkas->{$type};
+        abort_if(empty($path), 404);
+        abort_unless(Storage::disk(self::DISK)->exists($path), 404);
+
+        $this->authorizeBerkasAccess($berkas);
+
+        return Storage::disk(self::DISK)->download($path);
+    }
+
+    /**
+     * Ensure the current user may access the given berkas.
+     */
+    private function authorizeBerkasAccess(BerkasPengajuanMagang $berkas): void
+    {
+        // Owning mahasiswa.
+        if (auth('mahasiswa')->check() && auth('mahasiswa')->id() === $berkas->mahasiswa_id) {
+            return;
+        }
+
+        // Admin.
+        if (auth('admin')->check()) {
+            return;
+        }
+
+        // Supervising dosen.
+        if (auth('dosen')->check()) {
+            $dosenId = auth('dosen')->id();
+            $supervises = KontrakMagang::where('mahasiswa_id', $berkas->mahasiswa_id)
+                ->where('dosen_id', $dosenId)
+                ->exists();
+
+            abort_unless($supervises, 403);
+
+            return;
+        }
+
+        abort(403);
     }
 }

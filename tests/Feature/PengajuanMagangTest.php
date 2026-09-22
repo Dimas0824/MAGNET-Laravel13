@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     seedMasterData();
-    Storage::fake('public');
+    Storage::fake('private');
 });
 
 function validPengajuanFiles(): array
@@ -33,9 +33,9 @@ it('stores a valid pengajuan magang submission', function () {
     $berkas = BerkasPengajuanMagang::where('mahasiswa_id', $mahasiswa->id)->first();
     expect($berkas)->not->toBeNull();
 
-    Storage::disk('public')->assertExists($berkas->cv);
-    Storage::disk('public')->assertExists($berkas->transkrip_nilai);
-    Storage::disk('public')->assertExists($berkas->portfolio);
+    Storage::disk('private')->assertExists($berkas->cv);
+    Storage::disk('private')->assertExists($berkas->transkrip_nilai);
+    Storage::disk('private')->assertExists($berkas->portfolio);
 
     // A form record is created with status "diproses".
     $form = FormPengajuanMagang::where('pengajuan_id', $berkas->id)->first();
@@ -188,8 +188,8 @@ it('generates unique filenames for two submissions by the same mahasiswa', funct
         ->and($firstBerkas->transkrip_nilai)->not->toBe($secondBerkas->transkrip_nilai);
 
     // Both submissions must survive on disk; neither overwrote the other.
-    Storage::disk('public')->assertExists($firstBerkas->cv);
-    Storage::disk('public')->assertExists($secondBerkas->cv);
+    Storage::disk('private')->assertExists($firstBerkas->cv);
+    Storage::disk('private')->assertExists($secondBerkas->cv);
 });
 
 it('stores a random token in each generated filename', function () {

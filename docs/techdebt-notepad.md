@@ -161,3 +161,24 @@ Setup: vendor/node_modules junction-linked from main; .env copied; phpunit.xml D
   Use: git cherry-pick <sha> --no-commit then git checkout HEAD -- phpunit.xml, or merge then revert phpunit.xml.
 - wt-a may leave probe files (bootcheck.php, tests/bootstrap-worktree.php, ZzBootProbeTest.php) — DELETE before merge.
 - Agents commit per sub-task; cherry-pick commits in order onto upgrade/laravel-13, then run full suite.
+
+## SESSION: 'kerjakan semua B' — remaining tech debt
+DONE this session:
+- Item4 rename KriteriaLokasiMagang::lokasi_magang -> lokasiMagang (+4 call sites) [commit 98da573]
+- Item3 ReferencePoint  += max_score [commit 98da573]
+- Env repairs: vendor re-installed (composer install), npm install + build (public/build)
+
+IN PROGRESS:
+- Item2 mass-assignment hardening (ALL sensitive fields out of \ + refactor ~40 sites)
+  -> delegated to subagent bg_f66976f7 (main repo)
+- Item1 private-disk PII (WRITTEN, not yet verified):
+  config/filesystems.php: new 'private' disk (storage/app/private)
+  PengajuanMagangController: DISK const = 'private'; store/delete on private;
+    new downloadBerkas(,) + authorizeBerkasAccess (owner/admin/supervising dosen)
+  routes/web.php: GET berkas-pengajuan/{berkas}/{type} -> berkas.download (role:admin,mahasiswa,dosen)
+  admin magang/pengajuan-izin-magang/detail.blade.php: download links instead of empty inputs
+  tests/Feature/BerkasPengajuanStorageTest.php (6 tests)
+
+PENDING after both items merged: Item5 repo-wide Pint; final suite+coverage+push.
+
+NOTE: DB contention — must NOT run tests while bg_f66976f7 runs.

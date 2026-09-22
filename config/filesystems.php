@@ -36,6 +36,15 @@ return [
             'throw' => false,
         ],
 
+        // Private disk for PII documents (CV, transcript, portfolio).
+        // Not web-accessible; served only through an authorized route.
+        'private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'visibility' => 'private',
+            'throw' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
