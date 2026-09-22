@@ -29,12 +29,27 @@ class DataPreprocessing
             ->toArray();
 
         $lokasi = $alternative['lokasi_magang'];
-        $alternative['lokasi_magang'] = $lokasi_magang_list[$lokasi];
+        $alternative['lokasi_magang'] = $lokasi_magang_list[$lokasi] ?? 'Semua lokasi';
 
-        $fileContent = Storage::json(config('recommendation-system.preprocessing.alternatives_categorized_path'));
+        $path = config('recommendation-system.preprocessing.alternatives_categorized_path');
+        $fileContent = Storage::json($path) ?? [];
 
-        $fileContent[] = $alternative;
-        Storage::put(config('recommendation-system.preprocessing.alternatives_categorized_path'), json_encode($fileContent, JSON_PRETTY_PRINT));
+        // Upsert by lowongan id so repeated create/update events do not
+        // accumulate duplicate entries.
+        $replaced = false;
+        foreach ($fileContent as $index => $existing) {
+            if (($existing['id'] ?? null) === $alternative['id']) {
+                $fileContent[$index] = $alternative;
+                $replaced = true;
+                break;
+            }
+        }
+
+        if (! $replaced) {
+            $fileContent[] = $alternative;
+        }
+
+        Storage::put($path, json_encode($fileContent, JSON_PRETTY_PRINT));
     }
 
     /**

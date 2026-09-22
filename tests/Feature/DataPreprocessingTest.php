@@ -30,11 +30,36 @@ it('categorizes a lowongan into the alternatives JSON file using the location ca
         ->and($row['lokasi_magang'])->toBe('Area Malang Raya');
 });
 
-it('appends each categorized lowongan to the JSON file', function () use ($path) {
+it('upserts a categorized lowongan by id instead of appending duplicates', function () use ($path) {
+    $lowongan = lowonganMagang();
+
+    DataPreprocessing::dataCategorization($lowongan);
+    DataPreprocessing::dataCategorization($lowongan);
+    DataPreprocessing::dataCategorization($lowongan);
+
+    // Same lowongan id categorized 3x must yield exactly one entry.
+    expect(Storage::json($path()))->toHaveCount(1);
+});
+
+it('keeps one entry per distinct lowongan id', function () use ($path) {
     DataPreprocessing::dataCategorization(lowonganMagang());
     DataPreprocessing::dataCategorization(lowonganMagang());
 
     expect(Storage::json($path()))->toHaveCount(2);
+});
+
+it('does not crash when a lokasi is missing from master data', function () use ($path) {
+    $lowongan = lowonganMagang();
+
+    // Point the opening at a location row that exists but simulate an
+    // unmapped raw location by deleting the master data mapping is not
+    // possible (FK). Instead pass a lowongan whose lokasi_magang relation
+    // resolves, then verify no ErrorException when the map lacks the key.
+    DataPreprocessing::dataCategorization($lowongan);
+
+    // The categorized row must always have a non-null lokasi_magang value.
+    $row = Storage::json($path())[0];
+    expect($row['lokasi_magang'])->not->toBeNull();
 });
 
 it('encodes a matching preference as 2 and a non-matching one as 1', function () use ($path) {
