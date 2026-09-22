@@ -32,4 +32,5 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::post('logout', App\Livewire\Actions\Logout::class)
+    ->middleware('role:admin,dosen,mahasiswa')
     ->name('logout');

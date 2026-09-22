@@ -115,3 +115,24 @@ it('allows a mahasiswa into mahasiswa routes', function () {
 
     $this->get(route('mahasiswa.hasil-pencarian'))->assertOk();
 });
+
+it('logs out an authenticated mahasiswa', function () {
+    $mahasiswa = Mahasiswa::factory()->create();
+    $this->actingAs($mahasiswa, 'mahasiswa');
+
+    $this->post(route('logout'))->assertRedirect('/');
+    $this->assertGuest('mahasiswa');
+});
+
+it('logs out an authenticated dosen', function () {
+    $dosen = DosenPembimbing::factory()->create();
+    $this->actingAs($dosen, 'dosen');
+
+    $this->post(route('logout'))->assertRedirect('/');
+    $this->assertGuest('dosen');
+});
+
+it('does not error when a guest posts to logout', function () {
+    // Guests are redirected by the role middleware (no guard exception).
+    $this->post(route('logout'))->assertRedirect(route('login'));
+});

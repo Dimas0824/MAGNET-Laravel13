@@ -39,3 +39,16 @@ it('filters openings by company name', function () {
     $this->get(route('mahasiswa.hasil-pencarian', ['query' => 'Magnet']))
         ->assertOk();
 });
+
+it('rejects an unwhitelisted sort column instead of erroring', function () {
+    $mahasiswa = Mahasiswa::factory()->create();
+    $this->actingAs($mahasiswa, 'mahasiswa');
+
+    lowonganMagang();
+
+    // A malicious/invalid sort column must not reach the SQL orderBy.
+    Livewire\Volt\Volt::test('pages.mahasiswa.hasil-pencarian')
+        ->set('sortBy', 'passwords.hash; drop table x')
+        ->set('sortDirection', 'sideways')
+        ->assertOk();
+});

@@ -59,8 +59,11 @@ $jobs = computed(function () {
         });
     }
 
-    // Apply sorting
-    $query->orderBy($this->sortBy, $this->sortDirection);
+    // Apply sorting (whitelist columns/direction to prevent orderBy injection).
+    $sortable = ['created_at', 'kuota', 'jenis_magang', 'open_remote', 'status'];
+    $sortBy = in_array($this->sortBy, $sortable, true) ? $this->sortBy : 'created_at';
+    $sortDirection = $this->sortDirection === 'asc' ? 'asc' : 'desc';
+    $query->orderBy($sortBy, $sortDirection);
 
     return $query->paginate(10);
 });
