@@ -48,7 +48,7 @@ mount(function () {
             $this->perusahaan = $this->kontrak_magang->lowonganMagang->perusahaan ?? null;
 
             // Debug: Log magang dan perusahaan
-            $this->debug_info['magang_nama'] = $this->magang->nama ?? 'null';
+            $this->debug_info['magang_nama'] = $this->magang->pekerjaan->nama ?? 'null';
             $this->debug_info['perusahaan_nama'] = $this->perusahaan->nama ?? 'null';
 
             // Load logs data

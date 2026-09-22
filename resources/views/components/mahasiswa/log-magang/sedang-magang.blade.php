@@ -194,7 +194,7 @@ mount(function () {
                             </p>
                             <button
                                 class="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-3 px-8 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl transform"
-                                onclick="window.location='{{ route('mahasiswa.search') }}'">
+                                onclick="window.location='{{ route('mahasiswa.hasil-pencarian') }}'">
                                 <div class="flex items-center space-x-2">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
