@@ -370,7 +370,7 @@ $getUniqueByLowonganId = function ($collection) {
                                 <tr>
                                     <td class="px-6 py-3">Lokasi</td>
                                     <td class="px-6 py-3">
-                                        {{ $mahasiswa->kriteriaLokasiMagang->lokasi_magang->kategori_lokasi ?? '-' }}
+                                        {{ $mahasiswa->kriteriaLokasiMagang->lokasiMagang->kategori_lokasi ?? '-' }}
                                     </td>
                                 </tr>
                                 <tr>

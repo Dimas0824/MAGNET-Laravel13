@@ -20,6 +20,7 @@ class ReferencePoint extends Model
         'jenis_magang',
         'bidang_industri',
         'lokasi_magang',
+        'max_score',
         'rank'
     ];
 

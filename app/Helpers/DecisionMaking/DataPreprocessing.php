@@ -63,7 +63,7 @@ class DataPreprocessing
             'pekerjaan' => $mahasiswa->kriteriaPekerjaan->pekerjaan->nama,
             'bidang_industri' => $mahasiswa->kriteriaBidangIndustri->bidangIndustri->nama,
             'jenis_magang' => $mahasiswa->kriteriaJenisMagang->jenis_magang,
-            'lokasi_magang' => $mahasiswa->kriteriaLokasiMagang->lokasi_magang->kategori_lokasi,
+            'lokasi_magang' => $mahasiswa->kriteriaLokasiMagang->lokasiMagang->kategori_lokasi,
             'open_remote' => $mahasiswa->kriteriaOpenRemote->open_remote,
         ];
 
