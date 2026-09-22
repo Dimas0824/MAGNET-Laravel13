@@ -155,3 +155,9 @@ Setup: vendor/node_modules junction-linked from main; .env copied; phpunit.xml D
 ## OWED RESOLVED
 - W2-12 RED proof CAPTURED: temporarily reverted line 388 to preferensi_open_remote; test failed with
   "To contain: <td class=\"px-6 py-3\">Ya" -> restored fix -> GREEN. Proof complete.
+
+## MERGE NOTES (when agents finish)
+- Each wt has M phpunit.xml (DB override) — EXCLUDE on merge (keep main's db_magnet_test).
+  Use: git cherry-pick <sha> --no-commit then git checkout HEAD -- phpunit.xml, or merge then revert phpunit.xml.
+- wt-a may leave probe files (bootcheck.php, tests/bootstrap-worktree.php, ZzBootProbeTest.php) — DELETE before merge.
+- Agents commit per sub-task; cherry-pick commits in order onto upgrade/laravel-13, then run full suite.

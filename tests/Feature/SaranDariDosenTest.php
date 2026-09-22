@@ -4,15 +4,7 @@ use App\Models\DosenPembimbing;
 use App\Models\KontrakMagang;
 use App\Models\Mahasiswa;
 use App\Models\UmpanBalikMagang;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Tests\TestCase;
-
-// Pest's boot files are resolved from the vendor location, which is a junction
-// to the sibling checkout in this worktree, so the shared tests/Pest.php applies
-// only to that sibling's tests directory. Declare the base case + RefreshDatabase
-// here so this file boots the application and refreshes the schema regardless.
-uses(TestCase::class, RefreshDatabase::class);
 
 beforeEach(function () {
     seedMasterData();
