@@ -60,6 +60,11 @@ services:
       SESSION_DRIVER: file
       SKIP_OPTIMIZE: "true"
     command: ["php", "artisan", "queue:work", "--queue=default", "--tries=3", "--timeout=120", "--sleep=3"]
+    # The image ships an HTTP healthcheck (/up) intended for the web server;
+    # the worker runs no HTTP server, so disable it. Liveness is covered by
+    # restart: unless-stopped (queue:work exiting restarts the container).
+    healthcheck:
+      disable: true
     depends_on:
       app:
         condition: service_started
