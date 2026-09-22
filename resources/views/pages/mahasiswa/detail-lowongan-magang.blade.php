@@ -15,6 +15,7 @@ layout('components.layouts.user.main');
 
 state([
     'lowongan',
+    'lowonganId' => null,
 
     'isDataNotFound' => false,
     'isSaved' => false,
@@ -22,6 +23,8 @@ state([
 ]);
 
 mount(function (int $id) {
+    $this->lowonganId = $id;
+
     try {
         $this->lowongan = LowonganMagang::with(['perusahaan.bidangIndustri', 'pekerjaan', 'lokasiMagang'])
             ->findOrFail($id);
@@ -411,7 +414,7 @@ $getRemoteLabel = function ($remote) {
                                             : null;
                                     @endphp
 
-                                    <div onclick="window.location='{{ route('mahasiswa.detail-perusahaan', ['id' => $item->id]) }}'"
+                                    <div onclick="window.location='{{ route('mahasiswa.profil-perusahaan', $item->perusahaan_id) }}'"
                                         role="button"
                                         class="flex items-center gap-3 p-3 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 hover:cursor-pointer hover:shadow-sm border border-gray-100">
 
