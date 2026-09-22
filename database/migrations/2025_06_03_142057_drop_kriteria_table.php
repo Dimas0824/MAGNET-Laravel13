@@ -36,7 +36,7 @@ return new class extends Migration
                 'bidang industri',
                 'open remote',
                 'lokasi',
-                'uang saku'
+                'uang saku',
             ]);
             $table->string('nilai');
             $table->float('nilai_numerik');

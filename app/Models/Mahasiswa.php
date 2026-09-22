@@ -2,10 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\BerkasPengajuanMagang;
-use App\Models\KontrakMagang;
-use App\Models\UserBase;
-
 class Mahasiswa extends UserBase
 {
     protected $table = 'mahasiswa';

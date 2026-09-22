@@ -2,8 +2,8 @@
 
 use App\Http\Middleware\CheckRole;
 use App\Models\Admin;
-use App\Models\DosenPembimbing;
 use App\Models\Mahasiswa;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -17,7 +17,7 @@ function runCheckRole(array $roles, array $authenticated = []): Response|string
         test()->actingAs($user, $guard);
     }
 
-    $middleware = new CheckRole();
+    $middleware = new CheckRole;
     $request = Request::create('/protected');
 
     return $middleware->handle($request, fn () => new Response('OK'), ...$roles);
@@ -42,13 +42,13 @@ it('redirects to login when no allowed guard is authenticated', function () {
     $mahasiswa = Mahasiswa::factory()->create();
     $response = runCheckRole(['admin'], ['mahasiswa' => $mahasiswa]);
 
-    expect($response)->toBeInstanceOf(Illuminate\Http\RedirectResponse::class)
+    expect($response)->toBeInstanceOf(RedirectResponse::class)
         ->and($response->getTargetUrl())->toContain('/login');
 });
 
 it('redirects guests to login', function () {
     $response = runCheckRole(['admin', 'dosen', 'mahasiswa']);
 
-    expect($response)->toBeInstanceOf(Illuminate\Http\RedirectResponse::class)
+    expect($response)->toBeInstanceOf(RedirectResponse::class)
         ->and($response->getTargetUrl())->toContain('/login');
 });

@@ -16,12 +16,12 @@ class KontrakMagang extends Model
         'dosen_id',
         'lowongan_magang_id',
         'waktu_awal',
-        'waktu_akhir'
+        'waktu_akhir',
     ];
 
     protected $casts = [
         'waktu_awal' => 'datetime',
-        'waktu_akhir' => 'datetime'
+        'waktu_akhir' => 'datetime',
     ];
 
     /**

@@ -2,6 +2,7 @@
 
 use App\Models\Admin;
 use App\Models\DosenPembimbing;
+use App\Models\FinalRankRecommendation;
 use App\Models\FormPengajuanMagang;
 use App\Models\FullMultiplicativeForm;
 use App\Models\KriteriaBidangIndustri;
@@ -14,7 +15,6 @@ use App\Models\Mahasiswa;
 use App\Models\Perusahaan;
 use App\Models\RatioSystem;
 use App\Models\ReferencePoint;
-use App\Models\FinalRankRecommendation;
 
 /**
  * Mass-assignment hardening: sensitive fields must NOT be fillable.

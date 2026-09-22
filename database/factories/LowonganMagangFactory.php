@@ -9,7 +9,7 @@ use App\Models\Perusahaan;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\LowonganMagang>
+ * @extends Factory<LowonganMagang>
  */
 class LowonganMagangFactory extends Factory
 {
@@ -38,9 +38,10 @@ class LowonganMagangFactory extends Factory
             'jenis_magang' => $this->faker->randomElement(['berbayar', 'tidak berbayar']),
             'open_remote' => $this->faker->randomElement(['ya', 'tidak']),
             'lokasi_magang_id' => $this->faker->randomElement($lokasiIds),
-            'perusahaan_id' => $this->faker->randomElement($perusahaanIds)
+            'perusahaan_id' => $this->faker->randomElement($perusahaanIds),
         ];
     }
+
     public function configure()
     {
         return $this->afterMaking(function ($model) {

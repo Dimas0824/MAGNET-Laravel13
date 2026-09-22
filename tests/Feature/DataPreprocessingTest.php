@@ -1,8 +1,11 @@
 <?php
 
 use App\Helpers\DecisionMaking\DataPreprocessing;
+use App\Models\BidangIndustri;
 use App\Models\EncodedAlternatives;
 use App\Models\LokasiMagang;
+use App\Models\Pekerjaan;
+use App\Models\Perusahaan;
 use Illuminate\Support\Facades\Storage;
 
 $path = fn () => config('recommendation-system.preprocessing.alternatives_categorized_path');
@@ -62,18 +65,18 @@ it('does not crash when a lokasi is missing from master data', function () use (
     expect($row['lokasi_magang'])->not->toBeNull();
 });
 
-it('encodes a matching preference as 2 and a non-matching one as 1', function () use ($path) {
+it('encodes a matching preference as 2 and a non-matching one as 1', function () {
     // Opening that matches the mahasiswa preference on every criterion:
     // Software Engineer / Teknologi / berbayar / ya / Area Malang Raya.
-    $perusahaan = App\Models\Perusahaan::factory()->create([
-        'bidang_industri_id' => App\Models\BidangIndustri::where('nama', 'Teknologi')->value('id'),
+    $perusahaan = Perusahaan::factory()->create([
+        'bidang_industri_id' => BidangIndustri::where('nama', 'Teknologi')->value('id'),
     ]);
     $lowongan = lowonganMagang([
         'open_remote' => 'ya',
         'jenis_magang' => 'berbayar',
-        'pekerjaan_id' => App\Models\Pekerjaan::where('nama', 'Software Engineer')->value('id'),
+        'pekerjaan_id' => Pekerjaan::where('nama', 'Software Engineer')->value('id'),
         'perusahaan_id' => $perusahaan->id,
-        'lokasi_magang_id' => App\Models\LokasiMagang::where('kategori_lokasi', 'Area Malang Raya')->value('id'),
+        'lokasi_magang_id' => LokasiMagang::where('kategori_lokasi', 'Area Malang Raya')->value('id'),
     ]);
     DataPreprocessing::dataCategorization($lowongan);
 
@@ -91,10 +94,10 @@ it('encodes a matching preference as 2 and a non-matching one as 1', function ()
         ->and($encoded->lokasi_magang)->toBe(2);
 });
 
-it('encodes a mismatching preference as 1', function () use ($path) {
+it('encodes a mismatching preference as 1', function () {
     // Opening does NOT match the mahasiswa preference (which is Software Engineer/Teknologi)
     $lowongan = lowonganMagang([
-        'pekerjaan_id' => App\Models\Pekerjaan::where('nama', 'Data Engineer')->value('id'),
+        'pekerjaan_id' => Pekerjaan::where('nama', 'Data Engineer')->value('id'),
         'jenis_magang' => 'tidak berbayar',
         'open_remote' => 'tidak',
     ]);
@@ -109,16 +112,16 @@ it('encodes a mismatching preference as 1', function () use ($path) {
         ->and($encoded->jenis_magang)->toBe(1);
 });
 
-it('treats a "Semua" preference as matching everything (value 2)', function () use ($path) {
+it('treats a "Semua" preference as matching everything (value 2)', function () {
     $lowongan = lowonganMagang([
-        'pekerjaan_id' => App\Models\Pekerjaan::where('nama', 'Data Engineer')->value('id'),
+        'pekerjaan_id' => Pekerjaan::where('nama', 'Data Engineer')->value('id'),
     ]);
     DataPreprocessing::dataCategorization($lowongan);
 
     $mahasiswa = mahasiswaDenganPreferensi();
     // Override pekerjaan preference to "Semua"
     $mahasiswa->kriteriaPekerjaan->update([
-        'pekerjaan_id' => App\Models\Pekerjaan::where('nama', 'Semua')->value('id'),
+        'pekerjaan_id' => Pekerjaan::where('nama', 'Semua')->value('id'),
     ]);
 
     DataPreprocessing::dataEncoding($mahasiswa->fresh());
@@ -127,7 +130,7 @@ it('treats a "Semua" preference as matching everything (value 2)', function () u
     expect($encoded->pekerjaan)->toBe(2);
 });
 
-it('creates one encoded row per categorized opening', function () use ($path) {
+it('creates one encoded row per categorized opening', function () {
     DataPreprocessing::dataCategorization(lowonganMagang());
     DataPreprocessing::dataCategorization(lowonganMagang());
 

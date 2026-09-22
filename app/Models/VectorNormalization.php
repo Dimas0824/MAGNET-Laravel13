@@ -18,7 +18,7 @@ class VectorNormalization extends Model
         'open_remote',
         'jenis_magang',
         'bidang_industri',
-        'lokasi_magang'
+        'lokasi_magang',
     ];
 
     public function mahasiswa()

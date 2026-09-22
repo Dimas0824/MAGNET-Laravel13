@@ -2,8 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\UserBase;
-
 class Admin extends UserBase
 {
     protected $table = 'admin';

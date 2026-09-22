@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\KontrakMagang;
-use App\Models\LowonganMagang;
 use App\Models\Mahasiswa;
 use App\Models\Perusahaan;
 use App\Models\UlasanMagang;

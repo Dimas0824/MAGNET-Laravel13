@@ -2,9 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\Pekerjaan;
-use App\Models\BaseKriteriaModel;
-
 class KriteriaPekerjaan extends BaseKriteriaModel
 {
     protected $table = 'kriteria_pekerjaan';

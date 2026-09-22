@@ -2,8 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\BaseKriteriaModel;
-
 class KriteriaJenisMagang extends BaseKriteriaModel
 {
     protected $table = 'kriteria_jenis_magang';

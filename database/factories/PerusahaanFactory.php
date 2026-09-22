@@ -2,12 +2,12 @@
 
 namespace Database\Factories;
 
-use App\Models\Perusahaan;
 use App\Models\BidangIndustri;
+use App\Models\Perusahaan;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Perusahaan>
+ * @extends Factory<Perusahaan>
  */
 class PerusahaanFactory extends Factory
 {
@@ -21,9 +21,9 @@ class PerusahaanFactory extends Factory
     public function definition(): array
     {
         $bidangIndustriIds = BidangIndustri::where('nama', '!=', 'Semua')
-                ->orderBy('id')
-                ->pluck('id')
-                ->toArray();
+            ->orderBy('id')
+            ->pluck('id')
+            ->toArray();
 
         return [
             'nama' => $this->faker->company(),
@@ -31,9 +31,10 @@ class PerusahaanFactory extends Factory
             'lokasi' => $this->faker->address(),
             'kategori' => $this->faker->randomElement(['mitra', 'non_mitra']),
             'website' => $this->faker->url(),
-            'deskripsi' => $this->faker->paragraph()
+            'deskripsi' => $this->faker->paragraph(),
         ];
     }
+
     public function configure()
     {
         return $this->afterMaking(function ($model) {

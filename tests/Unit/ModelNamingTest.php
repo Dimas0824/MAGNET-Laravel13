@@ -1,9 +1,11 @@
 <?php
 
 use App\Models\EncodedAlternatives;
+use App\Models\KriteriaLokasiMagang;
 use App\Models\LowonganMagang;
 use App\Models\Pekerjaan;
 use App\Models\Perusahaan;
+use App\Models\ReferencePoint;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,16 +29,16 @@ it('uses camelCase lowonganMagang relation on Perusahaan', function () {
 });
 
 it('uses camelCase lokasiMagang relation on KriteriaLokasiMagang', function () {
-    expect(method_exists(App\Models\KriteriaLokasiMagang::class, 'lokasiMagang'))->toBeTrue()
-        ->and(method_exists(App\Models\KriteriaLokasiMagang::class, 'lokasi_magang'))->toBeFalse();
+    expect(method_exists(KriteriaLokasiMagang::class, 'lokasiMagang'))->toBeTrue()
+        ->and(method_exists(KriteriaLokasiMagang::class, 'lokasi_magang'))->toBeFalse();
 });
 
 it('declares the encoded_alternatives table', function () {
-    expect((new EncodedAlternatives())->getTable())->toBe('encoded_alternatives');
+    expect((new EncodedAlternatives)->getTable())->toBe('encoded_alternatives');
 });
 
 it('allows max_score to be mass-assigned on ReferencePoint', function () {
-    $model = new App\Models\ReferencePoint(['max_score' => 1.5]);
+    $model = new ReferencePoint(['max_score' => 1.5]);
 
     expect((float) $model->max_score)->toBe(1.5);
 });

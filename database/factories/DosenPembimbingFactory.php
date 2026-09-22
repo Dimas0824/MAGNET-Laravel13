@@ -2,12 +2,12 @@
 
 namespace Database\Factories;
 
-use Illuminate\Database\Eloquent\Factories\Factory;
 use App\Models\DosenPembimbing;
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\DosenPembimbing>
+ * @extends Factory<DosenPembimbing>
  */
 class DosenPembimbingFactory extends Factory
 {
@@ -27,6 +27,7 @@ class DosenPembimbingFactory extends Factory
             'foto' => $this->faker->imageUrl(640, 480, 'people', true, 'Dosen Pembimbing', true),
         ];
     }
+
     public function configure()
     {
         return $this->afterMaking(function ($model) {

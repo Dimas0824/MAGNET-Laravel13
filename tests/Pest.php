@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\Admin;
+use App\Models\DosenPembimbing;
+use App\Models\Mahasiswa;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -36,7 +39,7 @@ expect()->extend('toBeOne', function () {
 /**
  * Authenticate as a mahasiswa for feature tests.
  */
-function actingAsMahasiswa(\App\Models\Mahasiswa $mahasiswa): \App\Models\Mahasiswa
+function actingAsMahasiswa(Mahasiswa $mahasiswa): Mahasiswa
 {
     test()->actingAs($mahasiswa, 'mahasiswa');
 
@@ -46,7 +49,7 @@ function actingAsMahasiswa(\App\Models\Mahasiswa $mahasiswa): \App\Models\Mahasi
 /**
  * Authenticate as a dosen for feature tests.
  */
-function actingAsDosen(\App\Models\DosenPembimbing $dosen): \App\Models\DosenPembimbing
+function actingAsDosen(DosenPembimbing $dosen): DosenPembimbing
 {
     test()->actingAs($dosen, 'dosen');
 
@@ -56,7 +59,7 @@ function actingAsDosen(\App\Models\DosenPembimbing $dosen): \App\Models\DosenPem
 /**
  * Authenticate as an admin for feature tests.
  */
-function actingAsAdmin(\App\Models\Admin $admin): \App\Models\Admin
+function actingAsAdmin(Admin $admin): Admin
 {
     test()->actingAs($admin, 'admin');
 

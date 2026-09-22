@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Chat;
+use App\Models\DosenPembimbing;
 use App\Models\KontrakMagang;
 
 beforeEach(function () {
@@ -17,9 +18,9 @@ function chatFixture(): array
 
     // Create a real dosen row and point the kontrak at it, ensuring the id
     // differs from the mahasiswa id.
-    $dosen = App\Models\DosenPembimbing::factory()->create();
+    $dosen = DosenPembimbing::factory()->create();
     if ($dosen->id === $mahasiswaId) {
-        $dosen = App\Models\DosenPembimbing::factory()->create();
+        $dosen = DosenPembimbing::factory()->create();
     }
     $kontrak->update(['dosen_id' => $dosen->id]);
     $kontrak->refresh();

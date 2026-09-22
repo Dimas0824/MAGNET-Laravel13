@@ -7,7 +7,7 @@ use App\Models\Mahasiswa;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\BerkasPengajuanMagang>
+ * @extends Factory<BerkasPengajuanMagang>
  */
 class BerkasPengajuanMagangFactory extends Factory
 {
@@ -24,9 +24,9 @@ class BerkasPengajuanMagangFactory extends Factory
 
         return [
             'mahasiswa_id' => $this->faker->randomElement($mahasiswaIds),
-            'cv' => $this->faker->unique()->lexify('cv_?????') . '.pdf',
-            'transkrip_nilai' => $this->faker->unique()->lexify('transkrip_nilai_cv_?????') . '.pdf',
-            'portfolio' => $this->faker->unique()->optional()->lexify('portfolio_?????') . '.pdf'
+            'cv' => $this->faker->unique()->lexify('cv_?????').'.pdf',
+            'transkrip_nilai' => $this->faker->unique()->lexify('transkrip_nilai_cv_?????').'.pdf',
+            'portfolio' => $this->faker->unique()->optional()->lexify('portfolio_?????').'.pdf',
         ];
     }
 }

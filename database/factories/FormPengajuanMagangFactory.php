@@ -7,7 +7,7 @@ use App\Models\FormPengajuanMagang;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\FormPengajuanMagang>
+ * @extends Factory<FormPengajuanMagang>
  */
 class FormPengajuanMagangFactory extends Factory
 {
@@ -24,9 +24,10 @@ class FormPengajuanMagangFactory extends Factory
 
         return [
             'pengajuan_id' => $this->faker->randomElement($pengajuanIds),
-            'keterangan' => $this->faker->sentence()
+            'keterangan' => $this->faker->sentence(),
         ];
     }
+
     public function configure()
     {
         return $this->afterMaking(function ($model) {

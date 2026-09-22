@@ -2,6 +2,8 @@
 
 use App\Models\KontrakMagang;
 use App\Models\Mahasiswa;
+use App\Models\Pekerjaan;
+use App\Models\UlasanMagang;
 
 beforeEach(function () {
     seedMasterData();
@@ -20,7 +22,7 @@ it('shows similar openings and links them to a defined route', function () {
     $mahasiswa = Mahasiswa::factory()->create();
     actingAsMahasiswa($mahasiswa);
 
-    $pekerjaanId = App\Models\Pekerjaan::where('nama', 'Software Engineer')->value('id');
+    $pekerjaanId = Pekerjaan::where('nama', 'Software Engineer')->value('id');
     $current = lowonganMagang(['status' => 'buka', 'pekerjaan_id' => $pekerjaanId]);
     $sibling = lowonganMagang(['status' => 'buka', 'pekerjaan_id' => $pekerjaanId]);
 
@@ -39,7 +41,7 @@ it('shows reviews from contracts for the opening', function () {
     $lowongan = lowonganMagang(['status' => 'buka']);
     $kontrak = KontrakMagang::factory()->create(['lowongan_magang_id' => $lowongan->id]);
 
-    App\Models\UlasanMagang::create([
+    UlasanMagang::create([
         'kontrak_magang_id' => $kontrak->id,
         'rating' => 5,
         'komentar' => 'Pengalaman magang menyenangkan',

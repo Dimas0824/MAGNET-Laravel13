@@ -9,7 +9,7 @@ use App\Traits\BaseKriteriaFactory;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\KriteriaOpenRemote>
+ * @extends Factory<KriteriaOpenRemote>
  */
 class KriteriaOpenRemoteFactory extends Factory
 {
@@ -40,7 +40,7 @@ class KriteriaOpenRemoteFactory extends Factory
             $rank = $this->faker->numberBetween(1, config('recommendation-system.roc.total_criteria'));
             $model->forceFill([
                 'rank' => $rank,
-                'bobot' => \App\Helpers\DecisionMaking\ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
+                'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
             ]);
         });
     }

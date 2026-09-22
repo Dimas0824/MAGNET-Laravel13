@@ -2,7 +2,7 @@
 
 use App\Models\Mahasiswa;
 use App\Models\Perusahaan;
-use App\Models\BidangIndustri;
+use Livewire\Volt\Volt;
 
 beforeEach(function () {
     seedMasterData();
@@ -47,7 +47,7 @@ it('rejects an unwhitelisted sort column instead of erroring', function () {
     lowonganMagang();
 
     // A malicious/invalid sort column must not reach the SQL orderBy.
-    Livewire\Volt\Volt::test('pages.mahasiswa.hasil-pencarian')
+    Volt::test('pages.mahasiswa.hasil-pencarian')
         ->set('sortBy', 'passwords.hash; drop table x')
         ->set('sortDirection', 'sideways')
         ->assertOk();

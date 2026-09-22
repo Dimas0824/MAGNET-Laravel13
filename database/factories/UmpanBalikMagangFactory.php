@@ -7,7 +7,7 @@ use App\Models\UmpanBalikMagang;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\UmpanBalikMagang>
+ * @extends Factory<UmpanBalikMagang>
  */
 class UmpanBalikMagangFactory extends Factory
 {

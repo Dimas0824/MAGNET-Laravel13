@@ -2,9 +2,8 @@
 
 use App\Models\FinalRankRecommendation;
 use App\Models\FullMultiplicativeForm;
-use App\Models\RatioSystem;
-use App\Models\ReferencePoint;
 use App\Models\Mahasiswa;
+use App\Models\RatioSystem;
 use Illuminate\Support\Facades\DB;
 
 beforeEach(function () {

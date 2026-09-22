@@ -1,11 +1,11 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Livewire\Volt\Volt;
 use App\Http\Controllers\PengajuanMagangController;
 use App\Http\Controllers\TemplateController;
+use Illuminate\Support\Facades\Route;
+use Livewire\Volt\Volt;
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';
 
 Route::name('guest.')
     ->group(function () {
@@ -48,7 +48,6 @@ Route::name('admin.')
                 Volt::route('data-pekerjaan', 'pages.admin.kelola-data-master.data-pekerjaan')->name('data-pekerjaan');
             });
 
-
         Route::prefix('magang')
             ->group(function () {
                 Volt::route('lowongan', 'pages.admin.magang.lowongan-magang.index')->name('data-lowongan');
@@ -64,11 +63,9 @@ Route::name('admin.')
                 Route::view('aturan-magang', 'pages.admin.magang.aturan-magang.index')->name('aturan-magang');
             });
 
-
         Volt::route('laporan-statistik-magang', 'pages.admin.laporan-statistik-magang')->name('laporan-statistik-magang');
         Route::view('evaluasi-sistem-rekomendasi', 'pages.admin.evaluasi-sistem')->name('evaluasi-sistem-rekomendasi');
     });
-
 
 Route::name('mahasiswa.')
     ->middleware('role:mahasiswa')

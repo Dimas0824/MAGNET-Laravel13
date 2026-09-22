@@ -2,9 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\BaseKriteriaModel;
-use App\Models\LokasiMagang;
-
 class KriteriaLokasiMagang extends BaseKriteriaModel
 {
     protected $table = 'kriteria_lokasi_magang';

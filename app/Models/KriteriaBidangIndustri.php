@@ -2,8 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\BaseKriteriaModel;
-
 class KriteriaBidangIndustri extends BaseKriteriaModel
 {
     protected $table = 'kriteria_bidang_industri';
@@ -13,7 +11,8 @@ class KriteriaBidangIndustri extends BaseKriteriaModel
         'mahasiswa_id',
     ];
 
-    public function bidangIndustri() {
+    public function bidangIndustri()
+    {
         return $this->belongsTo(BidangIndustri::class);
     }
 }

@@ -1,5 +1,9 @@
 <?php
 
+use App\Events\LowonganMagangCreatedOrUpdated;
+use App\Events\MahasiswaPreferenceUpdated;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+
 /*
 |--------------------------------------------------------------------------
 | Config / test-infrastructure hygiene
@@ -29,8 +33,8 @@ it('targets the phpunit 12 schema', function () {
 });
 
 it('does not implement ShouldBroadcast on the domain events', function () {
-    expect(class_implements(App\Events\LowonganMagangCreatedOrUpdated::class))
-        ->not->toHaveKey(Illuminate\Contracts\Broadcasting\ShouldBroadcast::class)
-        ->and(class_implements(App\Events\MahasiswaPreferenceUpdated::class))
-        ->not->toHaveKey(Illuminate\Contracts\Broadcasting\ShouldBroadcast::class);
+    expect(class_implements(LowonganMagangCreatedOrUpdated::class))
+        ->not->toHaveKey(ShouldBroadcast::class)
+        ->and(class_implements(MahasiswaPreferenceUpdated::class))
+        ->not->toHaveKey(ShouldBroadcast::class);
 });

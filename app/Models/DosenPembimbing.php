@@ -2,9 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\KontrakMagang;
-use App\Models\UserBase;
-
 class DosenPembimbing extends UserBase
 {
     protected $table = 'dosen_pembimbing';

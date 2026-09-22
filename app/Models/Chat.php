@@ -50,6 +50,7 @@ class Chat extends Model
                 return $this->kontrakMagang->dosenPembimbing;
             }
         }
+
         return null;
     }
 
@@ -66,6 +67,7 @@ class Chat extends Model
                 return $this->kontrakMagang->dosenPembimbing;
             }
         }
+
         return null;
     }
 
@@ -102,6 +104,7 @@ class Chat extends Model
         if ($this->kontrakMagang) {
             return $this->sender_id == $this->kontrakMagang->mahasiswa_id;
         }
+
         return false;
     }
 
@@ -113,6 +116,7 @@ class Chat extends Model
         if ($this->kontrakMagang) {
             return $this->sender_id == $this->kontrakMagang->dosen_id;
         }
+
         return false;
     }
 }
