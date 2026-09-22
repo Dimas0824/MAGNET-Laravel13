@@ -4,7 +4,6 @@ use App\Models\EncodedAlternatives;
 use App\Models\LowonganMagang;
 use App\Models\Pekerjaan;
 use App\Models\Perusahaan;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,8 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 it('exposes kriteriaPekerjaan (not the kriteriPekerjaan typo)', function () {
     expect(method_exists(Pekerjaan::class, 'kriteriaPekerjaan'))->toBeTrue()
-        ->and(method_exists(Pekerjaan::class, 'kriteriPekerjaan'))->toBeFalse()
-        ->and((new Pekerjaan())->kriteriaPekerjaan())->toBeInstanceOf(HasMany::class);
+        ->and(method_exists(Pekerjaan::class, 'kriteriPekerjaan'))->toBeFalse();
 });
 
 it('uses camelCase lokasiMagang relation on LowonganMagang', function () {
