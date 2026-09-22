@@ -1,6 +1,7 @@
 <?php
 
 use function Livewire\Volt\{state, layout, mount};
+use App\Events\ChatMessageSent;
 use App\Models\Chat;
 use App\Models\KontrakMagang;
 use Illuminate\Support\Facades\Auth;
@@ -15,7 +16,6 @@ state([
     'dosenPembimbing' => null,
     'isAuthorized' => false,
     'lastMessageId' => 0,
-    'isPolling' => true,
 ]);
 
 mount(function () {
@@ -110,56 +110,7 @@ $loadMessages = function () {
 };
 
 $checkNewMessages = function () {
-    if (!$this->isAuthorized || !$this->dosenPembimbing || !$this->isPolling) {
-        return;
-    }
-
-    try {
-        $mahasiswaId = Auth::id();
-        $dosenId = $this->dosenPembimbing->id;
-
-        // Check for new messages since last known message
-        $newMessages = Chat::where('kontrak_magang_id', $this->kontrakMagangId)
-            ->where('id', '>', $this->lastMessageId)
-            ->where(function ($query) use ($mahasiswaId, $dosenId) {
-                $query
-                    ->where(function ($q) use ($mahasiswaId, $dosenId) {
-                        $q->where('sender_id', $mahasiswaId)->where('receiver_id', $dosenId);
-                    })
-                    ->orWhere(function ($q) use ($mahasiswaId, $dosenId) {
-                        $q->where('sender_id', $dosenId)->where('receiver_id', $mahasiswaId);
-                    });
-            })
-            ->orderBy('created_at', 'asc')
-            ->get();
-
-        if ($newMessages->count() > 0) {
-            // Add new messages to existing messages array
-            foreach ($newMessages as $chat) {
-                $this->messages[] = [
-                    'id' => $chat->id,
-                    'message' => $chat->message,
-                    'sender_id' => $chat->sender_id,
-                    'receiver_id' => $chat->receiver_id,
-                    'is_mine' => $chat->sender_id == $mahasiswaId,
-                    'created_at' => $chat->created_at->format('H:i'),
-                    'created_date' => $chat->created_at->format('Y-m-d'),
-                    'sender_name' => $chat->sender_id == $mahasiswaId ? 'Saya' : $this->dosenPembimbing->nama,
-                ];
-            }
-
-            // Update last message ID
-            $this->lastMessageId = $newMessages->max('id');
-
-            // Trigger scroll to bottom for new messages
-            $this->dispatch('new-message-received');
-        }
-    } catch (\Exception $e) {
-        \Log::error('Error checking new messages', [
-            'error' => $e->getMessage(),
-            'kontrak_magang_id' => $this->kontrakMagangId,
-        ]);
-    }
+    $this->loadMessages();
 };
 
 $sendMessage = function () {
@@ -200,6 +151,8 @@ $sendMessage = function () {
         // Create message
         $chat = Chat::create($chatData);
 
+        event(new ChatMessageSent($chat));
+
         // Add message to current messages array immediately
         $this->messages[] = [
             'id' => $chat->id,
@@ -236,16 +189,14 @@ $sendMessage = function () {
     }
 };
 
-$togglePolling = function () {
-    $this->isPolling = !$this->isPolling;
-};
-
 ?>
 
 <x-slot:user>mahasiswa</x-slot:user>
 <div x-data="{
     isVisible: true,
     pollingInterval: null,
+    chatChannel: null,
+    kontrakMagangId: @js($kontrakMagangId),
 
     init() {
         this.startPolling();
@@ -268,26 +219,38 @@ $togglePolling = function () {
     },
 
     startPolling() {
-        this.pollingInterval = setInterval(() => {
-            if (this.isVisible && $wire.isPolling) {
-                $wire.checkNewMessages();
-            }
-        }, 2000); // Check every 2 seconds
+        this.subscribeToChat();
     },
 
     stopPolling() {
+        if (this.chatChannel) {
+            window.Echo.leave(`chat.${this.kontrakMagangId}`);
+            this.chatChannel = null;
+        }
         if (this.pollingInterval) {
             clearInterval(this.pollingInterval);
             this.pollingInterval = null;
         }
     },
 
+    subscribeToChat() {
+        if (!window.Echo || this.chatChannel) {
+            return;
+        }
+
+        this.chatChannel = window.Echo.private(`chat.${this.kontrakMagangId}`)
+            .listen('.ChatMessageSent', () => {
+                $wire.loadMessages();
+                $wire.$dispatch('new-message-received');
+            });
+    },
+
     handleVisibilityChange() {
         document.addEventListener('visibilitychange', () => {
             this.isVisible = !document.hidden;
             if (this.isVisible) {
-                // Check for new messages immediately when tab becomes visible
-                $wire.checkNewMessages();
+                $wire.loadMessages();
+                this.subscribeToChat();
             }
         });
     },
@@ -357,9 +320,8 @@ $togglePolling = function () {
                     </flux:subheading>
                 </div>
             </div>
-            {{-- Polling Status Indicator --}}
             <div class="flex items-center gap-2">
-                <div class="flex items-center gap-1" x-show="$wire.isPolling" x-transition>
+                <div class="flex items-center gap-1">
                     <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                     <span class="text-xs text-green-600 font-medium">Online</span>
                 </div>

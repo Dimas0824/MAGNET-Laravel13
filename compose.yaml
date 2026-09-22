@@ -27,6 +27,13 @@ services:
       QUEUE_CONNECTION: redis
       SESSION_DRIVER: file
       FILESYSTEM_DISK: local
+      BROADCAST_CONNECTION: reverb
+      REVERB_APP_ID: ${REVERB_APP_ID:-magnet}
+      REVERB_APP_KEY: ${REVERB_APP_KEY:-magnet-key}
+      REVERB_APP_SECRET: ${REVERB_APP_SECRET:-magnet-secret}
+      REVERB_HOST: ${REVERB_HOST:-localhost}
+      REVERB_PORT: ${REVERB_PORT:-8001}
+      REVERB_SCHEME: ${REVERB_SCHEME:-http}
       PERF_LOG_ENABLED: "true"
       PERF_LOG_SAMPLE_RATE: "100"
     depends_on:
@@ -58,6 +65,13 @@ services:
       CACHE_DRIVER: redis
       QUEUE_CONNECTION: redis
       SESSION_DRIVER: file
+      BROADCAST_CONNECTION: reverb
+      REVERB_APP_ID: ${REVERB_APP_ID:-magnet}
+      REVERB_APP_KEY: ${REVERB_APP_KEY:-magnet-key}
+      REVERB_APP_SECRET: ${REVERB_APP_SECRET:-magnet-secret}
+      REVERB_HOST: ${REVERB_HOST:-localhost}
+      REVERB_PORT: ${REVERB_PORT:-8001}
+      REVERB_SCHEME: ${REVERB_SCHEME:-http}
       SKIP_OPTIMIZE: "true"
     command: ["php", "artisan", "queue:work", "--queue=default", "--tries=3", "--timeout=120", "--sleep=3"]
     # The image ships an HTTP healthcheck (/up) intended for the web server;
@@ -97,6 +111,48 @@ services:
     command: ["php", "artisan", "migrate", "--force"]
     depends_on:
       db:
+        condition: service_healthy
+    volumes:
+      - app_storage:/app/storage
+
+  reverb:
+    image: magnet-app:local
+    container_name: magnet_reverb
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      APP_NAME: MAGNET
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: ${APP_KEY:-base64:2fl+Ktvkfl+Fuz4Qp/A75G2RTiWVA/ZoKZvp6fiiM10=}
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: ${CONTAINER_DB_DATABASE:-db_magnet}
+      DB_USERNAME: ${CONTAINER_DB_USERNAME:-magnet}
+      DB_PASSWORD: ${CONTAINER_DB_PASSWORD:-magnet123}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      BROADCAST_CONNECTION: reverb
+      REVERB_APP_ID: ${REVERB_APP_ID:-magnet}
+      REVERB_APP_KEY: ${REVERB_APP_KEY:-magnet-key}
+      REVERB_APP_SECRET: ${REVERB_APP_SECRET:-magnet-secret}
+      REVERB_HOST: ${REVERB_HOST:-localhost}
+      REVERB_PORT: ${REVERB_PORT:-8001}
+      REVERB_SCHEME: ${REVERB_SCHEME:-http}
+      REVERB_SERVER_HOST: 0.0.0.0
+      REVERB_SERVER_PORT: 8080
+      SKIP_OPTIMIZE: "true"
+    command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+    healthcheck:
+      disable: true
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       - app_storage:/app/storage
