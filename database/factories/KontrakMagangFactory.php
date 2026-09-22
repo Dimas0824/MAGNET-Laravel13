@@ -22,18 +22,22 @@ class KontrakMagangFactory extends Factory
      */
     public function definition(): array
     {
-
-        $mahasiswaIds = Mahasiswa::orderBy('id')->pluck('id')->toArray();
-        $dosenIds = DosenPembimbing::orderBy('id')->pluck('id')->toArray();
-        $lowonganIds = LowonganMagang::orderBy('id')->pluck('id')->toArray();
+        // Fall back to creating the required relations so the factory is
+        // self-sufficient (previously crashed when none existed).
+        $mahasiswaId = Mahasiswa::query()->inRandomOrder()->value('id')
+            ?? Mahasiswa::factory()->create()->id;
+        $dosenId = DosenPembimbing::query()->inRandomOrder()->value('id')
+            ?? DosenPembimbing::factory()->create()->id;
+        $lowonganId = LowonganMagang::query()->inRandomOrder()->value('id')
+            ?? lowonganMagang()->id;
 
         $startDate = $this->faker->dateTimeBetween('-1 year', 'now');
         $finishDate = $this->faker->dateTimeBetween($startDate, '+1 year');
 
         return [
-            'mahasiswa_id' => $this->faker->randomElement($mahasiswaIds),
-            'dosen_id' => $this->faker->randomElement($dosenIds),
-            'lowongan_magang_id' => $this->faker->randomElement($lowonganIds),
+            'mahasiswa_id' => $mahasiswaId,
+            'dosen_id' => $dosenId,
+            'lowongan_magang_id' => $lowonganId,
             'waktu_awal' => $startDate,
             'waktu_akhir' => $finishDate,
         ];
