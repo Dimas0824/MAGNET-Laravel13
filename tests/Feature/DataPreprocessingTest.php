@@ -38,8 +38,18 @@ it('appends each categorized lowongan to the JSON file', function () use ($path)
 });
 
 it('encodes a matching preference as 2 and a non-matching one as 1', function () use ($path) {
-    // Opening: Software Engineer / Teknologi / berbayar / ya / Area Malang Raya
-    $lowongan = lowonganMagang(['open_remote' => 'ya', 'jenis_magang' => 'berbayar']);
+    // Opening that matches the mahasiswa preference on every criterion:
+    // Software Engineer / Teknologi / berbayar / ya / Area Malang Raya.
+    $perusahaan = App\Models\Perusahaan::factory()->create([
+        'bidang_industri_id' => App\Models\BidangIndustri::where('nama', 'Teknologi')->value('id'),
+    ]);
+    $lowongan = lowonganMagang([
+        'open_remote' => 'ya',
+        'jenis_magang' => 'berbayar',
+        'pekerjaan_id' => App\Models\Pekerjaan::where('nama', 'Software Engineer')->value('id'),
+        'perusahaan_id' => $perusahaan->id,
+        'lokasi_magang_id' => App\Models\LokasiMagang::where('kategori_lokasi', 'Area Malang Raya')->value('id'),
+    ]);
     DataPreprocessing::dataCategorization($lowongan);
 
     // Preference matches pekerjaan, bidang, lokasi, jenis, remote => all 2

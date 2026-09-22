@@ -111,3 +111,57 @@ it('requires authentication to submit a pengajuan', function () {
     $this->post(route('mahasiswa.store-pengajuan-magang'), validPengajuanFiles())
         ->assertRedirect(route('login'));
 });
+
+it('rejects a non-pdf portfolio', function () {
+    $mahasiswa = Mahasiswa::factory()->create();
+    $this->actingAs($mahasiswa, 'mahasiswa');
+
+    $files = validPengajuanFiles();
+    $files['portfolio'] = UploadedFile::fake()->create('p.txt', 10, 'text/plain');
+
+    $this->post(route('mahasiswa.store-pengajuan-magang'), $files)
+        ->assertSessionHasErrors('portfolio');
+});
+
+it('rejects a portfolio larger than 2MB', function () {
+    $mahasiswa = Mahasiswa::factory()->create();
+    $this->actingAs($mahasiswa, 'mahasiswa');
+
+    $files = validPengajuanFiles();
+    $files['portfolio'] = UploadedFile::fake()->create('p.pdf', 3000, 'application/pdf');
+
+    $this->post(route('mahasiswa.store-pengajuan-magang'), $files)
+        ->assertSessionHasErrors('portfolio');
+});
+
+it('rejects a missing transkrip nilai', function () {
+    $mahasiswa = Mahasiswa::factory()->create();
+    $this->actingAs($mahasiswa, 'mahasiswa');
+
+    $files = validPengajuanFiles();
+    unset($files['transkrip_nilai']);
+
+    $this->post(route('mahasiswa.store-pengajuan-magang'), $files)
+        ->assertSessionHasErrors('transkrip_nilai');
+});
+
+it('updates the submission status to diproses via setStatusdiproses', function () {
+    $mahasiswa = Mahasiswa::factory()->create();
+    $this->actingAs($mahasiswa, 'mahasiswa');
+
+    $this->post(route('mahasiswa.store-pengajuan-magang'), validPengajuanFiles());
+
+    $berkas = BerkasPengajuanMagang::where('mahasiswa_id', $mahasiswa->id)->first();
+    expect($berkas->formPengajuanMagang->status)->toBe('diproses');
+
+    // Calling the public helper returns true when a berkas exists.
+    $controller = new App\Http\Controllers\PengajuanMagangController();
+    expect($controller->setStatusdiproses($mahasiswa->id))->toBeTrue();
+});
+
+it('returns false from setStatusdiproses when no submission exists', function () {
+    $mahasiswa = Mahasiswa::factory()->create();
+
+    $controller = new App\Http\Controllers\PengajuanMagangController();
+    expect($controller->setStatusdiproses($mahasiswa->id))->toBeFalse();
+});
