@@ -144,3 +144,14 @@ HEAD: db5a937 (pushed)
 DONE: Wave 0, 0.5, 1, W2-1,2,3/4,5/6/H2,9,L,10/11,12/13/14
 REMAINING: W2-7/8/K (dosen dashboard), W2-15/16/19 (pengajuan+masukan), W2-J (saran-dari-dosen), W3-1 (MultiMOORA count), W4-2 (roc config), W4 (async queue orchestrator)
 OWED: W2-12 RED proof (temporary revert was aborted before output).
+
+## PARALLEL EXECUTION (worktrees + per-DB) — started
+- wt-a (db_magnet_test_a): branch wt/w2-15-pengajuan -> W2-15/16/19 pengajuan security
+- wt-b (db_magnet_test_b): branch wt/w2-j-saran     -> W2-J saran-dari-dosen pagination
+- wt-c (db_magnet_test_c): branch wt/w3-w4          -> W3-1 + W4-2 + W4 queue orchestrator
+Merge plan when all GREEN: cherry-pick/merge each branch into upgrade/laravel-13 sequentially, re-run full suite, then remove worktrees.
+Setup: vendor/node_modules junction-linked from main; .env copied; phpunit.xml DB per worktree.
+
+## OWED RESOLVED
+- W2-12 RED proof CAPTURED: temporarily reverted line 388 to preferensi_open_remote; test failed with
+  "To contain: <td class=\"px-6 py-3\">Ya" -> restored fix -> GREEN. Proof complete.
