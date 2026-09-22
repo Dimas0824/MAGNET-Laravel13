@@ -25,11 +25,9 @@ class KriteriaLokasiMagangFactory extends Factory
      */
     public function definition(): array
     {
-        static $lokasiIds = null;
-        static $mahasiswaIds = null;
 
-        $lokasiIds ??= LokasiMagang::orderBy('id')->pluck('id')->toArray();
-        $mahasiswaIds ??= Mahasiswa::orderBy('id')->pluck('id')->toArray();
+        $lokasiIds = LokasiMagang::orderBy('id')->pluck('id')->toArray();
+        $mahasiswaIds = Mahasiswa::orderBy('id')->pluck('id')->toArray();
 
         $rank = $this->faker->numberBetween(1, config('recommendation-system.roc.total_criteria'));
 
@@ -40,7 +38,6 @@ class KriteriaLokasiMagangFactory extends Factory
             'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
         ];
     }
-
 
     public function configure()
     {

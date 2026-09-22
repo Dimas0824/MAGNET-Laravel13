@@ -21,11 +21,7 @@ class LogMagangFactory extends Factory
      */
     public function definition(): array
     {
-        static $kontrakMagangData = null;
-
-        if (!$kontrakMagangData) {
-            $kontrakMagangData = KontrakMagang::orderBy('id')->get(['id', 'waktu_awal', 'waktu_akhir'])->toArray();
-        }
+        $kontrakMagangData = KontrakMagang::orderBy('id')->get(['id', 'waktu_awal', 'waktu_akhir'])->toArray();
 
         $kontrak = $this->faker->randomElement($kontrakMagangData);
 

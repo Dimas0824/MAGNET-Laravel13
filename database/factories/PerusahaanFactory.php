@@ -20,8 +20,7 @@ class PerusahaanFactory extends Factory
      */
     public function definition(): array
     {
-        static $bidangIndustriIds = null;
-        $bidangIndustriIds ??= BidangIndustri::where('nama', '!=', 'Semua')
+        $bidangIndustriIds = BidangIndustri::where('nama', '!=', 'Semua')
                 ->orderBy('id')
                 ->pluck('id')
                 ->toArray();

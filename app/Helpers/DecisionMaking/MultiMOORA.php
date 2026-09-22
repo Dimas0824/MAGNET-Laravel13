@@ -460,36 +460,40 @@ class MultiMOORA
             return $a['avg_rank'] <=> $b['avg_rank'];
         });
 
-        $ratioSystemIDs = RatioSystem::select('id')
-            ->where('mahasiswa_id', $this->mahasiswa->id)
-            ->orderBy('updated_at', 'desc')
+        // Map each stage row's id by lowongan_magang_id so the final rows
+        // reference the correct stage rows regardless of insertion order.
+        $ratioSystemIDs = RatioSystem::where('mahasiswa_id', $this->mahasiswa->id)
+            ->orderBy('id', 'desc')
             ->limit(LowonganMagang::count())
             ->get()
-            ->toArray();
+            ->mapWithKeys(fn ($row) => [$row->lowongan_magang_id => $row->id])
+            ->all();
 
-        $referencePointIDs = ReferencePoint::select('id')
-            ->where('mahasiswa_id', $this->mahasiswa->id)
-            ->orderBy('updated_at', 'desc')
+        $referencePointIDs = ReferencePoint::where('mahasiswa_id', $this->mahasiswa->id)
+            ->orderBy('id', 'desc')
             ->limit(LowonganMagang::count())
             ->get()
-            ->toArray();
+            ->mapWithKeys(fn ($row) => [$row->lowongan_magang_id => $row->id])
+            ->all();
 
-        $fmfIDs = FullMultiplicativeForm::select('id')
-            ->where('mahasiswa_id', $this->mahasiswa->id)
-            ->orderBy('updated_at', 'desc')
+        $fmfIDs = FullMultiplicativeForm::where('mahasiswa_id', $this->mahasiswa->id)
+            ->orderBy('id', 'desc')
             ->limit(LowonganMagang::count())
             ->get()
-            ->toArray();
+            ->mapWithKeys(fn ($row) => [$row->lowongan_magang_id => $row->id])
+            ->all();
 
         $finalRanks = [];
         $rank = 1;
-        foreach ($combinedArray as $key => $item) {
+        foreach ($combinedArray as $item) {
+            $lowonganId = $item['lowongan_magang_id'];
+
             $finalRanks[] = [
                 'mahasiswa_id' => $this->mahasiswa->id,
-                'lowongan_magang_id' => $item['lowongan_magang_id'],
-                'ratio_system_id' => $ratioSystemIDs[$key]['id'],
-                'reference_point_id' => $referencePointIDs[$key]['id'],
-                'fmf_id' => $fmfIDs[$key]['id'],
+                'lowongan_magang_id' => $lowonganId,
+                'ratio_system_id' => $ratioSystemIDs[$lowonganId] ?? null,
+                'reference_point_id' => $referencePointIDs[$lowonganId] ?? null,
+                'fmf_id' => $fmfIDs[$lowonganId] ?? null,
                 'avg_rank' => $item['avg_rank'],
                 'rank' => $rank++,
                 'created_at' => $this->now,

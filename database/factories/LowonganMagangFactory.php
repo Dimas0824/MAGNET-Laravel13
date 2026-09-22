@@ -22,17 +22,13 @@ class LowonganMagangFactory extends Factory
      */
     public function definition(): array
     {
-        static $pekerjaanIds = null;
-        static $lokasiIds = null;
-        static $perusahaanIds = null;
-
-        $pekerjaanIds ??= Pekerjaan::where('nama', '!=', 'Semua')
+        $pekerjaanIds = Pekerjaan::where('nama', '!=', 'Semua')
             ->pluck('id')
             ->toArray();
-        $lokasiIds ??= LokasiMagang::where('kategori_lokasi', '!=', 'Semua')
+        $lokasiIds = LokasiMagang::where('kategori_lokasi', '!=', 'Semua')
             ->pluck('id')
             ->toArray();
-        $perusahaanIds ??= Perusahaan::pluck('id')->toArray();
+        $perusahaanIds = Perusahaan::pluck('id')->toArray();
 
         return [
             'kuota' => $this->faker->numberBetween(1, 50),

@@ -22,13 +22,10 @@ class KontrakMagangFactory extends Factory
      */
     public function definition(): array
     {
-        static $mahasiswaIds = null;
-        static $dosenIds = null;
-        static $lowonganIds = null;
 
-        $mahasiswaIds ??= Mahasiswa::orderBy('id')->pluck('id')->toArray();
-        $dosenIds ??= DosenPembimbing::orderBy('id')->pluck('id')->toArray();
-        $lowonganIds ??= LowonganMagang::orderBy('id')->pluck('id')->toArray();
+        $mahasiswaIds = Mahasiswa::orderBy('id')->pluck('id')->toArray();
+        $dosenIds = DosenPembimbing::orderBy('id')->pluck('id')->toArray();
+        $lowonganIds = LowonganMagang::orderBy('id')->pluck('id')->toArray();
 
         $startDate = $this->faker->dateTimeBetween('-1 year', 'now');
         $finishDate = $this->faker->dateTimeBetween($startDate, '+1 year');

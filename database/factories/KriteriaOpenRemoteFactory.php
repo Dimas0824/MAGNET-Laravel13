@@ -24,8 +24,7 @@ class KriteriaOpenRemoteFactory extends Factory
      */
     public function definition(): array
     {
-        static $mahasiswaIds = null;
-        $mahasiswaIds ??= Mahasiswa::orderBy('id')->pluck('id')->toArray();
+        $mahasiswaIds = Mahasiswa::orderBy('id')->pluck('id')->toArray();
 
         $rank = $this->faker->numberBetween(1, config('recommendation-system.roc.total_criteria'));
 
@@ -36,7 +35,6 @@ class KriteriaOpenRemoteFactory extends Factory
             'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
         ];
     }
-
 
     public function configure()
     {

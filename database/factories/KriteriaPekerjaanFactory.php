@@ -25,11 +25,8 @@ class KriteriaPekerjaanFactory extends Factory
      */
     public function definition(): array
     {
-        static $pekerjaanIds = null;
-        static $mahasiswaIds = null;
-
-        $pekerjaanIds ??= Pekerjaan::orderBy('id')->pluck('id')->toArray();
-        $mahasiswaIds ??= Mahasiswa::orderBy('id')->pluck('id')->toArray();
+        $pekerjaanIds = Pekerjaan::orderBy('id')->pluck('id')->toArray();
+        $mahasiswaIds = Mahasiswa::orderBy('id')->pluck('id')->toArray();
 
         $rank = $this->faker->numberBetween(1, config('recommendation-system.roc.total_criteria'));
 

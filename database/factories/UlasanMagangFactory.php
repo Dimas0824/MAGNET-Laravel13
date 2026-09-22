@@ -20,9 +20,8 @@ class UlasanMagangFactory extends Factory
      */
     public function definition(): array
     {
-        static $kontrakMagangIds = null;
 
-        $kontrakMagangIds ??= KontrakMagang::orderBy('id')->pluck('id')->toArray();
+        $kontrakMagangIds = KontrakMagang::orderBy('id')->pluck('id')->toArray();
 
         return [
             'kontrak_magang_id' => $this->faker->randomElement($kontrakMagangIds),

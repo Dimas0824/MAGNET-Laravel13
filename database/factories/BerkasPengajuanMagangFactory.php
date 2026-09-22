@@ -20,8 +20,7 @@ class BerkasPengajuanMagangFactory extends Factory
      */
     public function definition(): array
     {
-        static $mahasiswaIds = null;
-        $mahasiswaIds ??= Mahasiswa::orderBy('id')->pluck('id')->toArray();
+        $mahasiswaIds = Mahasiswa::orderBy('id')->pluck('id')->toArray();
 
         return [
             'mahasiswa_id' => $this->faker->randomElement($mahasiswaIds),
