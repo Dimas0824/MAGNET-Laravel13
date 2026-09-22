@@ -5,6 +5,10 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
 return Application::configure(basePath: dirname(__DIR__))
+    // Explicit listener mappings in EventServiceProvider are the single source
+    // of truth; disable the framework's automatic discovery so retired
+    // listeners are no longer registered implicitly.
+    ->withEvents(discover: false)
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',

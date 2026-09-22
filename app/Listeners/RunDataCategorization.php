@@ -7,8 +7,10 @@ use App\Helpers\DecisionMaking\DataPreprocessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 
-class RunDataCategorization
+class RunDataCategorization implements ShouldQueue
 {
+    use InteractsWithQueue;
+
     /**
      * Create the event listener.
      */
