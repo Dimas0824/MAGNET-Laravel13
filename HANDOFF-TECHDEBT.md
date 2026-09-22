@@ -116,3 +116,31 @@ vendor\bin\pint <changed files>                                                 
 
 ## SESSION CONTINUITY
 Plan agent session (full context): ses_f3847bc0dffeDuw2ySv0roqkN1
+
+## STATUS: ALL WAVES COMPLETE — 09/22/2026 22:15:26
+Merged all parallel-agent branches into upgrade/laravel-13.
+
+FINAL RESULTS:
+- Full suite: 126 passed (363 assertions), 0 failed
+- Coverage: 86.8% (593/683 statements) — target >=80% MET
+- Pint: clean on all changed files
+- Smoke greps: no stale route/attr refs; no MySQL-only SQL in pages
+- Laravel 13.32.0, 78 routes, app boots
+
+Waves done (this session's merge commits 7cfeecd..3fa5706):
+- W3-1: MultiMOORA lowongan count once (lazy accessor, white-box safe)
+- W4-2: persiapan-preferensi reads roc.total_criteria from config
+- W4: RunRecommendationPipeline queued orchestrator + RunDataCategorization ShouldQueue
+      + bootstrap/app.php ->withEvents(discover:false)  [IMPORTANT: framework event
+        auto-discovery was registering retired listeners]
+- W2-15/16/19: pengajuan unique filenames + no debug leak + masukan id cast
+- W2-J: saran-dari-dosen query-level pagination
+
+Worktrees wt-a/b/c removed; helper branches wt/* deleted.
+
+REMAINING (optional / deferred tech debt, not in scope of the 80% gate):
+- WP private-disk PII (deferred by decision)
+- mass-assignment  hardening (deferred)
+- repo-wide Pint (100+ untouched files)
+- ReferencePoint:: missing max_score
+- KriteriaLokasiMagang::lokasi_magang() snake_case (different model; not renamed)
