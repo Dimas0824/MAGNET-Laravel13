@@ -61,35 +61,35 @@ function mahasiswaDenganPreferensi(array $overrides = []): Mahasiswa
 
     $total = config('recommendation-system.roc.total_criteria');
 
-    KriteriaPekerjaan::create([
+    KriteriaPekerjaan::forceCreate([
         'mahasiswa_id' => $mahasiswa->id,
         'pekerjaan_id' => Pekerjaan::where('nama', 'Software Engineer')->value('id'),
         'rank' => 1,
         'bobot' => ROC::getWeight(1, $total),
     ]);
 
-    KriteriaBidangIndustri::create([
+    KriteriaBidangIndustri::forceCreate([
         'mahasiswa_id' => $mahasiswa->id,
         'bidang_industri_id' => BidangIndustri::where('nama', 'Teknologi')->value('id'),
         'rank' => 2,
         'bobot' => ROC::getWeight(2, $total),
     ]);
 
-    KriteriaLokasiMagang::create([
+    KriteriaLokasiMagang::forceCreate([
         'mahasiswa_id' => $mahasiswa->id,
         'lokasi_magang_id' => LokasiMagang::where('kategori_lokasi', 'Area Malang Raya')->value('id'),
         'rank' => 3,
         'bobot' => ROC::getWeight(3, $total),
     ]);
 
-    KriteriaJenisMagang::create([
+    KriteriaJenisMagang::forceCreate([
         'mahasiswa_id' => $mahasiswa->id,
         'jenis_magang' => 'berbayar',
         'rank' => 4,
         'bobot' => ROC::getWeight(4, $total),
     ]);
 
-    KriteriaOpenRemote::create([
+    KriteriaOpenRemote::forceCreate([
         'mahasiswa_id' => $mahasiswa->id,
         'open_remote' => 'ya',
         'rank' => 5,
@@ -112,7 +112,7 @@ function lowonganMagang(array $overrides = []): LowonganMagang
         ? Perusahaan::find($overrides['perusahaan_id'])
         : Perusahaan::factory()->create();
 
-    $lowongan = LowonganMagang::withoutEvents(fn () => LowonganMagang::create(array_merge([
+    return LowonganMagang::withoutEvents(fn () => LowonganMagang::forceCreate(array_merge([
         'kuota' => 5,
         'pekerjaan_id' => Pekerjaan::where('nama', 'Software Engineer')->value('id'),
         'deskripsi' => 'Deskripsi magang',
@@ -123,6 +123,4 @@ function lowonganMagang(array $overrides = []): LowonganMagang
         'lokasi_magang_id' => LokasiMagang::where('kategori_lokasi', 'Area Malang Raya')->value('id'),
         'perusahaan_id' => $perusahaan->id,
     ], $overrides)));
-
-    return $lowongan;
 }

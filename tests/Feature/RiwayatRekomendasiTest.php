@@ -16,7 +16,7 @@ function seedFinalRanks(Mahasiswa $mahasiswa, int $count = 3): void
     for ($i = 0; $i < $count; $i++) {
         $lowongan = lowonganMagang();
 
-        $rs = RatioSystem::create([
+        $rs = RatioSystem::forceCreate([
             'mahasiswa_id' => $mahasiswa->id, 'lowongan_magang_id' => $lowongan->id,
             'score' => 10 - $i, 'rank' => $i + 1,
         ]);
@@ -26,12 +26,12 @@ function seedFinalRanks(Mahasiswa $mahasiswa, int $count = 3): void
             'bidang_industri' => 0, 'lokasi_magang' => 0, 'max_score' => 0.1 * ($i + 1),
             'rank' => $i + 1, 'created_at' => $now, 'updated_at' => $now,
         ]);
-        $fmf = FullMultiplicativeForm::create([
+        $fmf = FullMultiplicativeForm::forceCreate([
             'mahasiswa_id' => $mahasiswa->id, 'lowongan_magang_id' => $lowongan->id,
             'score' => 5 + $i, 'rank' => $i + 1,
         ]);
 
-        FinalRankRecommendation::create([
+        FinalRankRecommendation::forceCreate([
             'mahasiswa_id' => $mahasiswa->id, 'lowongan_magang_id' => $lowongan->id,
             'ratio_system_id' => $rs->id, 'reference_point_id' => $rpId, 'fmf_id' => $fmf->id,
             'avg_rank' => $i + 1, 'rank' => $i + 1,

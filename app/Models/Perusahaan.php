@@ -16,7 +16,6 @@ class Perusahaan extends Model
         'bidang_industri_id',
         'lokasi',
         'kategori',
-        'rating',
         'logo',
         'website',
         'deskripsi',

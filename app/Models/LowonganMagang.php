@@ -19,7 +19,6 @@ class LowonganMagang extends Model
         'persyaratan',
         'jenis_magang',
         'open_remote',
-        'status',
         'lokasi_magang_id',
         'perusahaan_id',
     ];

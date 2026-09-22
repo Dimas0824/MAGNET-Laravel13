@@ -106,7 +106,7 @@ it('links a berkas pengajuan to its form with the correct status cast', function
         'portfolio' => null,
     ]);
 
-    FormPengajuanMagang::create([
+    FormPengajuanMagang::forceCreate([
         'pengajuan_id' => $berkas->id,
         'status' => 'diproses',
         'keterangan' => 'sedang review',

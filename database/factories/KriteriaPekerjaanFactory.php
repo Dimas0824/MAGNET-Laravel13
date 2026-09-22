@@ -33,14 +33,18 @@ class KriteriaPekerjaanFactory extends Factory
         return [
             'pekerjaan_id' => $this->faker->randomElement($pekerjaanIds),
             'mahasiswa_id' => $this->faker->randomElement($mahasiswaIds),
-            'rank' => $rank,
-            'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
         ];
     }
 
 
     public function configure()
     {
-        return $this->withBobotCalculation();
+        return $this->afterMaking(function ($model) {
+            $rank = $this->faker->numberBetween(1, config('recommendation-system.roc.total_criteria'));
+            $model->forceFill([
+                'rank' => $rank,
+                'bobot' => \App\Helpers\DecisionMaking\ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
+            ]);
+        });
     }
 }

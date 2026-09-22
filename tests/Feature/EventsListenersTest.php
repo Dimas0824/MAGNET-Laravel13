@@ -44,7 +44,7 @@ it('categorizes a lowongan into the alternatives file when it is created', funct
     lowonganMagang(); // model events NOT disabled here -> triggers categorization
 
     // Wait: lowonganMagang() helper disables events, so create explicitly.
-    $lowongan = LowonganMagang::create([
+    $lowongan = LowonganMagang::forceCreate([
         'kuota' => 3,
         'pekerjaan_id' => Pekerjaan::where('nama', 'Software Engineer')->value('id'),
         'deskripsi' => 'd',

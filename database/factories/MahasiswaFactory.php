@@ -26,7 +26,6 @@ class MahasiswaFactory extends Factory
             'nama' => $this->faker->name(),
             'nim' => (string) $this->faker->unique()->numerify(str_repeat('#', $length)),
             'email' => $this->faker->unique()->safeEmail(),
-            'password' => Hash::make('mahasiswa123'),
             'angkatan' => $this->faker->numberBetween(20, 30),
             'jenis_kelamin' => $this->faker->randomElement(['L', 'P']),
             'tanggal_lahir' => $this->faker->dateTimeBetween('-23 years', '-17 years')->format('Y-m-d'),
@@ -34,10 +33,16 @@ class MahasiswaFactory extends Factory
             'program_studi' => $this->faker->randomElement([
                 'D4 Teknik Informatika', 'D4 Sistem Informasi Bisnis', 'D2 Pengembangan Piranti Lunak Situs'
             ]),
-            'status_magang' => $this->faker->randomElement([
-                'belum magang', 'sedang magang', 'selesai magang'
-            ]),
             'alamat' => $this->faker->address()
         ];
+    }
+    public function configure()
+    {
+        return $this->afterMaking(function ($model) {
+            $model->forceFill([
+                'password' => Hash::make('mahasiswa123'),
+                'status_magang' => $this->faker->randomElement(['belum magang', 'sedang magang', 'selesai magang']),
+            ]);
+        });
     }
 }

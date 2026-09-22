@@ -11,7 +11,6 @@ class Admin extends UserBase
     protected $fillable = [
         'nama',
         'nip',
-        'password',
     ];
 
     protected $hidden = [

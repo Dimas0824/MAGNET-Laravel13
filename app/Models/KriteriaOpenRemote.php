@@ -11,7 +11,5 @@ class KriteriaOpenRemote extends BaseKriteriaModel
     protected $fillable = [
         'open_remote',
         'mahasiswa_id',
-        'rank',
-        'bobot'
     ];
 }

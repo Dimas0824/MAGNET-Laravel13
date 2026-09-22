@@ -12,8 +12,6 @@ class KriteriaPekerjaan extends BaseKriteriaModel
     protected $fillable = [
         'pekerjaan_id',
         'mahasiswa_id',
-        'rank',
-        'bobot'
     ];
 
     public function pekerjaan()

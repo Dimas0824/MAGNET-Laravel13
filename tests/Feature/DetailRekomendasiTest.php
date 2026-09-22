@@ -15,7 +15,7 @@ function seedDetailRecommendation(Mahasiswa $mahasiswa): void
     $now = now();
     $lowongan = lowonganMagang();
 
-    $rs = RatioSystem::create([
+    $rs = RatioSystem::forceCreate([
         'mahasiswa_id' => $mahasiswa->id, 'lowongan_magang_id' => $lowongan->id,
         'score' => 10, 'rank' => 1,
     ]);
@@ -25,12 +25,12 @@ function seedDetailRecommendation(Mahasiswa $mahasiswa): void
         'bidang_industri' => 0, 'lokasi_magang' => 0, 'max_score' => 0.1,
         'rank' => 1, 'created_at' => $now, 'updated_at' => $now,
     ]);
-    $fmf = FullMultiplicativeForm::create([
+    $fmf = FullMultiplicativeForm::forceCreate([
         'mahasiswa_id' => $mahasiswa->id, 'lowongan_magang_id' => $lowongan->id,
         'score' => 5, 'rank' => 1,
     ]);
 
-    FinalRankRecommendation::create([
+    FinalRankRecommendation::forceCreate([
         'mahasiswa_id' => $mahasiswa->id, 'lowongan_magang_id' => $lowongan->id,
         'ratio_system_id' => $rs->id, 'reference_point_id' => $rpId, 'fmf_id' => $fmf->id,
         'avg_rank' => 1, 'rank' => 1,

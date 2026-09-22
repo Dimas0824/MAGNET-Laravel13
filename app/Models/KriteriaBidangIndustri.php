@@ -11,8 +11,6 @@ class KriteriaBidangIndustri extends BaseKriteriaModel
     protected $fillable = [
         'bidang_industri_id',
         'mahasiswa_id',
-        'rank',
-        'bobot'
     ];
 
     public function bidangIndustri() {

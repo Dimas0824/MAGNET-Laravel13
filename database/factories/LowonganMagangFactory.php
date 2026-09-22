@@ -37,9 +37,14 @@ class LowonganMagangFactory extends Factory
             'persyaratan' => $this->faker->paragraph(),
             'jenis_magang' => $this->faker->randomElement(['berbayar', 'tidak berbayar']),
             'open_remote' => $this->faker->randomElement(['ya', 'tidak']),
-            'status' => $this->faker->randomElement(['buka', 'tutup']),
             'lokasi_magang_id' => $this->faker->randomElement($lokasiIds),
             'perusahaan_id' => $this->faker->randomElement($perusahaanIds)
         ];
+    }
+    public function configure()
+    {
+        return $this->afterMaking(function ($model) {
+            $model->forceFill(['status' => $this->faker->randomElement(['buka', 'tutup'])]);
+        });
     }
 }

@@ -14,13 +14,11 @@ class Mahasiswa extends UserBase
         'nama',
         'nim',
         'email',
-        'password',
         'jenis_kelamin',
         'jurusan',
         'program_studi',
         'angkatan',
         'tanggal_lahir',
-        'status_magang',
         'alamat',
     ];
 

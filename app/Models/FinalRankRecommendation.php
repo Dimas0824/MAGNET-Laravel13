@@ -18,8 +18,6 @@ class FinalRankRecommendation extends Model
         'ratio_system_id',
         'reference_point_id',
         'fmf_id',
-        'avg_rank',
-        'rank'
     ];
 
     public function mahasiswa()

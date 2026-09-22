@@ -15,8 +15,6 @@ class FullMultiplicativeForm extends Model
     protected $fillable = [
         'mahasiswa_id',
         'lowongan_magang_id',
-        'score',
-        'rank'
     ];
 
     public function mahasiswa()

@@ -21,7 +21,6 @@ class ReferencePoint extends Model
         'bidang_industri',
         'lokasi_magang',
         'max_score',
-        'rank'
     ];
 
     public function mahasiswa()

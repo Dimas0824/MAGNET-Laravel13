@@ -62,35 +62,35 @@ class KriteriaPreferensiSeeder extends Seeder
         }, $mahasiswaIDs);
 
         foreach ($preferences as $item) {
-            KriteriaBidangIndustri::create([
+            \App\Models\KriteriaBidangIndustri::forceCreate([
                 'bidang_industri_id' => $item['bidang_industri']['bidang_industri_id'],
                 'mahasiswa_id' => $item['mahasiswa_id'],
                 'rank' => $item['bidang_industri']['rank'],
                 'bobot' => ROC::getWeight($item['bidang_industri']['rank'], config('recommendation-system.roc.total_criteria'))
             ]);
 
-            KriteriaJenisMagang::create([
+            \App\Models\KriteriaJenisMagang::forceCreate([
                 'mahasiswa_id' => $item['mahasiswa_id'],
                 'jenis_magang' => $item['jenis_magang']['jenis_magang'],
                 'rank' => $item['jenis_magang']['rank'],
                 'bobot' => ROC::getWeight($item['jenis_magang']['rank'], config('recommendation-system.roc.total_criteria'))
             ]);
 
-            KriteriaLokasiMagang::create([
+            \App\Models\KriteriaLokasiMagang::forceCreate([
                 'mahasiswa_id' => $item['mahasiswa_id'],
                 'lokasi_magang_id' => $item['lokasi_magang']['lokasi_magang_id'],
                 'rank' => $item['lokasi_magang']['rank'],
                 'bobot' => ROC::getWeight($item['lokasi_magang']['rank'], config('recommendation-system.roc.total_criteria'))
             ]);
 
-            KriteriaOpenRemote::create([
+            \App\Models\KriteriaOpenRemote::forceCreate([
                 'mahasiswa_id' => $item['mahasiswa_id'],
                 'open_remote' => $item['open_remote']['open_remote'],
                 'rank' => $item['open_remote']['rank'],
                 'bobot' => ROC::getWeight($item['open_remote']['rank'], config('recommendation-system.roc.total_criteria'))
             ]);
 
-            KriteriaPekerjaan::create([
+            \App\Models\KriteriaPekerjaan::forceCreate([
                 'mahasiswa_id' => $item['mahasiswa_id'],
                 'pekerjaan_id' => $item['pekerjaan']['pekerjaan_id'],
                 'rank' => $item['pekerjaan']['rank'],

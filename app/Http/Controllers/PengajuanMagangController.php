@@ -180,7 +180,7 @@ class PengajuanMagangController extends Controller
                 ]);
 
                 // Buat form pengajuan dengan status 'diproses'
-                FormPengajuanMagang::create([
+                FormPengajuanMagang::forceCreate([
                     'pengajuan_id' => $berkas->id,
                     'status' => 'diproses',
                     'keterangan' => 'Dokumen telah dikirim, diproses review admin',

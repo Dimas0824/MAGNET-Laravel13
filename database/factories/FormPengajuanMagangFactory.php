@@ -24,8 +24,13 @@ class FormPengajuanMagangFactory extends Factory
 
         return [
             'pengajuan_id' => $this->faker->randomElement($pengajuanIds),
-            'status' => $this->faker->randomElement(['diproses', 'diterima', 'ditolak']),
             'keterangan' => $this->faker->sentence()
         ];
+    }
+    public function configure()
+    {
+        return $this->afterMaking(function ($model) {
+            $model->forceFill(['status' => $this->faker->randomElement(['diproses', 'diterima', 'ditolak'])]);
+        });
     }
 }

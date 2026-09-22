@@ -164,7 +164,7 @@ $save = function () {
             $bidangIndustri = BidangIndustri::firstOrCreate(['nama' => $this->bidang_industri]);
 
             // Create new company
-            $newCompany = Perusahaan::create([
+            $newCompany = Perusahaan::forceCreate([
                 'nama' => $this->company_name,
                 'bidang_industri_id' => $bidangIndustri->id,
                 'lokasi' => $this->company_address,
@@ -180,7 +180,7 @@ $save = function () {
             ]);
 
             // Create lowongan magang
-            $magang = LowonganMagang::create([
+            $magang = LowonganMagang::forceCreate([
                 'kuota' => 1,
                 'pekerjaan_id' => $pekerjaan->id,
                 'deskripsi' => "Program magang di {$this->company_name}",
@@ -197,7 +197,7 @@ $save = function () {
         }
 
         // Create contract with pending status (without dosen assignment)
-        $kontrak = KontrakMagang::create([
+        $kontrak = KontrakMagang::forceCreate([
             'mahasiswa_id' => $this->mahasiswa->id,
             'dosen_id' => null, // Will be assigned by admin
             'lowongan_magang_id' => $lowongan_magang_id,

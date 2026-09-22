@@ -31,13 +31,17 @@ class KriteriaJenisMagangFactory extends Factory
         return [
             'jenis_magang' => $this->faker->randomElement(['berbayar', 'tidak berbayar']),
             'mahasiswa_id' => $this->faker->randomElement($mahasiswaIds),
-            'rank' => $rank,
-            'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
         ];
     }
 
     public function configure()
     {
-        return $this->withBobotCalculation();
+        return $this->afterMaking(function ($model) {
+            $rank = $this->faker->numberBetween(1, config('recommendation-system.roc.total_criteria'));
+            $model->forceFill([
+                'rank' => $rank,
+                'bobot' => \App\Helpers\DecisionMaking\ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
+            ]);
+        });
     }
 }

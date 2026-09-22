@@ -12,8 +12,6 @@ class KriteriaLokasiMagang extends BaseKriteriaModel
     protected $fillable = [
         'lokasi_magang_id',
         'mahasiswa_id',
-        'rank',
-        'bobot'
     ];
 
     public function lokasiMagang()

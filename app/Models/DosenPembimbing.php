@@ -12,7 +12,6 @@ class DosenPembimbing extends UserBase
     protected $fillable = [
         'nama',
         'nidn',
-        'password',
         'jenis_kelamin',
         'foto',
     ];

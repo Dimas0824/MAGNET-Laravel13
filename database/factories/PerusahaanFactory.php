@@ -30,9 +30,14 @@ class PerusahaanFactory extends Factory
             'bidang_industri_id' => $this->faker->randomElement($bidangIndustriIds),
             'lokasi' => $this->faker->address(),
             'kategori' => $this->faker->randomElement(['mitra', 'non_mitra']),
-            'rating' => $this->faker->optional()->randomFloat(1, 0, 5),
             'website' => $this->faker->url(),
             'deskripsi' => $this->faker->paragraph()
         ];
+    }
+    public function configure()
+    {
+        return $this->afterMaking(function ($model) {
+            $model->forceFill(['rating' => $this->faker->optional()->randomFloat(1, 0, 5)]);
+        });
     }
 }

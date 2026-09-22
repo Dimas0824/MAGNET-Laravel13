@@ -58,7 +58,7 @@ $register = function (): void {
     try {
         $validated = $this->validate();
 
-        $mahasiswa = Mahasiswa::create([
+        $mahasiswa = Mahasiswa::forceCreate([
             'nama' => $this->nama,
             'nim' => $this->nim,
             'email' => $this->email,

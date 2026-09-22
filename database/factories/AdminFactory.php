@@ -23,7 +23,12 @@ class AdminFactory extends Factory
         return [
             'nama' => $this->faker->name(),
             'nip' => (string) $this->faker->unique()->numerify('##################'),
-            'password' => Hash::make('admin123'),
         ];
+    }
+    public function configure()
+    {
+        return $this->afterMaking(function ($model) {
+            $model->forceFill(['password' => Hash::make('admin123')]);
+        });
     }
 }

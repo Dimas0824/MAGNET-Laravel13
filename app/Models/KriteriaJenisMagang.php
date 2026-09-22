@@ -11,7 +11,5 @@ class KriteriaJenisMagang extends BaseKriteriaModel
     protected $fillable = [
         'jenis_magang',
         'mahasiswa_id',
-        'rank',
-        'bobot'
     ];
 }

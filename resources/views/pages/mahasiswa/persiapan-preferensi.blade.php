@@ -74,35 +74,35 @@ $storePreferensiMahasiswa = function () {
         DB::transaction(function () use ($totalCriteria) {
             $mhs_id = auth('mahasiswa')->user()->id;
 
-            KriteriaPekerjaan::create([
+            KriteriaPekerjaan::forceCreate([
                 'pekerjaan_id' => $this->pekerjaan,
                 'mahasiswa_id' => $mhs_id,
                 'rank' => $this->pekerjaan_rank,
                 'bobot' => ROC::getWeight($this->pekerjaan_rank, $totalCriteria),
             ]);
 
-            KriteriaBidangIndustri::create([
+            KriteriaBidangIndustri::forceCreate([
                 'bidang_industri_id' => $this->bidang_industri,
                 'mahasiswa_id' => $mhs_id,
                 'rank' => $this->bidang_industri_rank,
                 'bobot' => ROC::getWeight($this->bidang_industri_rank, $totalCriteria),
             ]);
 
-            KriteriaLokasiMagang::create([
+            KriteriaLokasiMagang::forceCreate([
                 'lokasi_magang_id' => $this->lokasi_magang,
                 'mahasiswa_id' => $mhs_id,
                 'rank' => $this->lokasi_magang_rank,
                 'bobot' => ROC::getWeight($this->lokasi_magang_rank, $totalCriteria),
             ]);
 
-            KriteriaJenisMagang::create([
+            KriteriaJenisMagang::forceCreate([
                 'jenis_magang' => $this->jenis_magang,
                 'mahasiswa_id' => $mhs_id,
                 'rank' => $this->jenis_magang_rank,
                 'bobot' => ROC::getWeight($this->jenis_magang_rank, $totalCriteria),
             ]);
 
-            KriteriaOpenRemote::create([
+            KriteriaOpenRemote::forceCreate([
                 'open_remote' => $this->open_remote,
                 'mahasiswa_id' => $mhs_id,
                 'rank' => $this->open_remote_rank,
