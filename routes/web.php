@@ -90,7 +90,6 @@ Route::name('mahasiswa.')
         Volt::route('detail-lowongan-magang/{id}', 'pages.mahasiswa.detail-lowongan-magang')->name('detail-lowongan-magang');
         Volt::route('profil-perusahaan/{id}', 'pages.mahasiswa.profil-perusahaan')->name('profil-perusahaan');
 
-        Route::view('notifikasi', 'pages.mahasiswa.notifikasi')->name('notifikasi');
         Volt::route('riwayat-rekomendasi', 'pages.mahasiswa.riwayat-rekomendasi.index')->name('riwayat-rekomendasi');
         Volt::route('riwayat-rekomendasi/detail', 'pages.mahasiswa.riwayat-rekomendasi.detail-rekomendasi')->name('detail-rekomendasi');
         Volt::route('saran-dari-dosen', 'pages.mahasiswa.saran-dari-dosen')->name('saran-dari-dosen');
