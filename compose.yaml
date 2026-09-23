@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: magnet-app:local
+    image: ${IMAGE_TAG:-magnet-app:local}
     container_name: magnet_app
     restart: unless-stopped
     ports:
@@ -45,7 +45,7 @@ services:
       - app_storage:/app/storage
 
   worker:
-    image: magnet-app:local
+    image: ${IMAGE_TAG:-magnet-app:local}
     container_name: magnet_worker
     restart: unless-stopped
     environment:
@@ -91,7 +91,7 @@ services:
 
   # One-shot: run migrations + optional seed, then exit.
   migrate:
-    image: magnet-app:local
+    image: ${IMAGE_TAG:-magnet-app:local}
     container_name: magnet_migrate
     profiles: ["setup"]
     environment:
@@ -116,7 +116,7 @@ services:
       - app_storage:/app/storage
 
   reverb:
-    image: magnet-app:local
+    image: ${IMAGE_TAG:-magnet-app:local}
     container_name: magnet_reverb
     restart: unless-stopped
     ports:

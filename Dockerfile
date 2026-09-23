@@ -6,11 +6,13 @@
 FROM composer:2.8 AS vendor
 WORKDIR /app
 
+ARG INSTALL_DEV=false
+
 COPY composer.json composer.lock ./
 RUN --mount=type=cache,target=/tmp/composer-cache \
     COMPOSER_CACHE_DIR=/tmp/composer-cache \
     composer install \
-        --no-dev \
+        $( [ "$INSTALL_DEV" = "true" ] || echo --no-dev ) \
         --no-interaction \
         --prefer-dist \
         --no-scripts \
@@ -21,7 +23,7 @@ COPY . .
 RUN --mount=type=cache,target=/tmp/composer-cache \
     COMPOSER_CACHE_DIR=/tmp/composer-cache \
     composer dump-autoload \
-        --no-dev \
+        $( [ "$INSTALL_DEV" = "true" ] || echo --no-dev ) \
         --classmap-authoritative \
         --no-scripts \
     && mkdir -p \

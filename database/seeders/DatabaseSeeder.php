@@ -2,35 +2,19 @@
 
 namespace Database\Seeders;
 
-use Faker\Factory as FakerFactory;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
     /**
      * Seed the application's database.
+     *
+     * Uses the deterministic DemoSeeder so all records are explicitly linked
+     * (mahasiswa -> preferences -> contract -> logs/reviews/chat), instead of
+     * independent random factories whose foreign keys do not connect.
      */
-    public function run()
+    public function run(): void
     {
-        $faker = FakerFactory::create();
-        $faker->seed(123);
-
-        $this->call([
-            MahasiswaSeeder::class,
-            DosenPembimbingSeeder::class,
-            AdminSeeder::class,
-            BidangIndustriSeeder::class,
-            PekerjaanSeeder::class,
-            LokasiMagangSeeder::class,
-            PerusahaanSeeder::class,
-            LowonganMagangSeeder::class,
-            KontrakMagangSeeder::class,
-            LogMagangSeeder::class,
-            UlasanMagangSeeder::class,
-            UmpanBalikMagangSeeder::class,
-            BerkasPengajuanMagangSeeder::class,
-            FormPengajuanMagangSeeder::class,
-            KriteriaPreferensiSeeder::class,
-        ]);
+        $this->call(DemoSeeder::class);
     }
 }

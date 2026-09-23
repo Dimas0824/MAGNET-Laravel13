@@ -6,6 +6,8 @@ use App\Models\Mahasiswa;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+require_once __DIR__.'/Helpers.php';
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
