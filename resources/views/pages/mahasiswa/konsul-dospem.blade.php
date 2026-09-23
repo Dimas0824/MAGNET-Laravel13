@@ -67,31 +67,27 @@ $loadMessages = function () {
         $mahasiswaId = Auth::id();
         $dosenId = $this->dosenPembimbing->id;
 
-        // Load messages for this kontrak between mahasiswa and dosen
+        // Load messages for this kontrak, identified by participant ROLE.
+        // Raw id comparison is unsafe: mahasiswa.id and dosen.id can collide.
         $messages = Chat::where('kontrak_magang_id', $this->kontrakMagangId)
-            ->where(function ($query) use ($mahasiswaId, $dosenId) {
-                $query
-                    ->where(function ($q) use ($mahasiswaId, $dosenId) {
-                        $q->where('sender_id', $mahasiswaId)->where('receiver_id', $dosenId);
-                    })
-                    ->orWhere(function ($q) use ($mahasiswaId, $dosenId) {
-                        $q->where('sender_id', $dosenId)->where('receiver_id', $mahasiswaId);
-                    });
-            })
             ->orderBy('created_at', 'asc')
             ->get();
 
         $this->messages = $messages
             ->map(function ($chat) use ($mahasiswaId) {
+                $isMine = $chat->isSentByMahasiswa();
+
                 return [
                     'id' => $chat->id,
                     'message' => $chat->message,
                     'sender_id' => $chat->sender_id,
+                    'sender_type' => $chat->sender_type,
                     'receiver_id' => $chat->receiver_id,
-                    'is_mine' => $chat->sender_id == $mahasiswaId,
+                    'receiver_type' => $chat->receiver_type,
+                    'is_mine' => $isMine,
                     'created_at' => $chat->created_at->format('H:i'),
                     'created_date' => $chat->created_at->format('Y-m-d'),
-                    'sender_name' => $chat->sender_id == $mahasiswaId ? 'Saya' : $this->dosenPembimbing->nama,
+                    'sender_name' => $isMine ? 'Saya' : $this->dosenPembimbing->nama,
                 ];
             })
             ->toArray();
@@ -137,7 +133,9 @@ $sendMessage = function () {
         $chatData = [
             'kontrak_magang_id' => $this->kontrakMagangId,
             'sender_id' => $mahasiswaId,
+            'sender_type' => Chat::SENDER_MAHASISWA,
             'receiver_id' => $dosenId,
+            'receiver_type' => Chat::SENDER_DOSEN,
             'message' => trim($this->messageText),
         ];
 
@@ -158,7 +156,9 @@ $sendMessage = function () {
             'id' => $chat->id,
             'message' => $chat->message,
             'sender_id' => $chat->sender_id,
+            'sender_type' => $chat->sender_type,
             'receiver_id' => $chat->receiver_id,
+            'receiver_type' => $chat->receiver_type,
             'is_mine' => true,
             'created_at' => $chat->created_at->format('H:i'),
             'created_date' => $chat->created_at->format('Y-m-d'),
@@ -240,8 +240,8 @@ $sendMessage = function () {
 
         this.chatChannel = window.Echo.private(`chat.${this.kontrakMagangId}`)
             .listen('.ChatMessageSent', () => {
-                $wire.loadMessages();
-                $wire.$dispatch('new-message-received');
+                this.$wire.loadMessages();
+                this.$wire.$dispatch('new-message-received');
             });
     },
 
@@ -249,7 +249,7 @@ $sendMessage = function () {
         document.addEventListener('visibilitychange', () => {
             this.isVisible = !document.hidden;
             if (this.isVisible) {
-                $wire.loadMessages();
+                this.$wire.loadMessages();
                 this.subscribeToChat();
             }
         });
@@ -258,7 +258,7 @@ $sendMessage = function () {
     handleKeydown(event) {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
-            $wire.sendMessage();
+            this.$wire.sendMessage();
         }
     },
 
@@ -376,8 +376,7 @@ $sendMessage = function () {
                     @endif
 
                     {{-- Message --}}
-                    <div class="message-item" x-data="{ isNew: false }" x-init="// Mark as new if this is a recent message
-                    if ({{ $message['id'] }} > {{ $lastMessageId - 1 }} && !{{ $message['is_mine'] ? 'true' : 'false' }}) {
+                    <div class="message-item" x-data="{ isNew: false }" x-init="if ({{ $message['id'] }} > {{ $lastMessageId - 1 }} && !{{ $message['is_mine'] ? 'true' : 'false' }}) {
                         isNew = true;
                         setTimeout(() => isNew = false, 3000);
                     }">

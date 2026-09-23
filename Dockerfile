@@ -39,6 +39,17 @@ RUN --mount=type=cache,target=/tmp/composer-cache \
 FROM node:20-alpine AS frontend
 WORKDIR /app
 
+# Reverb/Echo connection details are baked into the JS bundle at build time,
+# so they must be present here (not just as runtime env in compose).
+ARG VITE_REVERB_APP_KEY
+ARG VITE_REVERB_HOST
+ARG VITE_REVERB_PORT
+ARG VITE_REVERB_SCHEME
+ENV VITE_REVERB_APP_KEY=$VITE_REVERB_APP_KEY \
+    VITE_REVERB_HOST=$VITE_REVERB_HOST \
+    VITE_REVERB_PORT=$VITE_REVERB_PORT \
+    VITE_REVERB_SCHEME=$VITE_REVERB_SCHEME
+
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci
 

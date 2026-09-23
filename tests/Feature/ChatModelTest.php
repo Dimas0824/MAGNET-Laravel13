@@ -3,6 +3,7 @@
 use App\Models\Chat;
 use App\Models\DosenPembimbing;
 use App\Models\KontrakMagang;
+use App\Models\Mahasiswa;
 
 beforeEach(function () {
     seedMasterData();
@@ -10,8 +11,6 @@ beforeEach(function () {
 
 function chatFixture(): array
 {
-    // Use explicit, distinct ids so sender/receiver role detection is
-    // unambiguous (mahasiswa_id and dosen_id must not collide).
     $kontrak = KontrakMagang::factory()->create();
 
     $mahasiswaId = $kontrak->mahasiswa_id;
@@ -29,14 +28,18 @@ function chatFixture(): array
     $dariMahasiswa = Chat::create([
         'kontrak_magang_id' => $kontrak->id,
         'sender_id' => $kontrak->mahasiswa_id,
+        'sender_type' => Chat::SENDER_MAHASISWA,
         'receiver_id' => $dosenId,
+        'receiver_type' => Chat::SENDER_DOSEN,
         'message' => 'Halo dosen',
     ]);
 
     $dariDosen = Chat::create([
         'kontrak_magang_id' => $kontrak->id,
         'sender_id' => $dosenId,
+        'sender_type' => Chat::SENDER_DOSEN,
         'receiver_id' => $kontrak->mahasiswa_id,
+        'receiver_type' => Chat::SENDER_MAHASISWA,
         'message' => 'Halo mahasiswa',
     ]);
 
@@ -79,12 +82,78 @@ it('returns null sender/receiver when the kontrak is missing', function () {
     $chat = new Chat([
         'kontrak_magang_id' => 999999,
         'sender_id' => 1,
+        'sender_type' => Chat::SENDER_MAHASISWA,
         'receiver_id' => 2,
+        'receiver_type' => Chat::SENDER_DOSEN,
         'message' => 'orphan',
     ]);
 
     expect($chat->sender)->toBeNull()
         ->and($chat->receiver)->toBeNull()
-        ->and($chat->isSentByMahasiswa())->toBeFalse()
+        ->and($chat->isSentByMahasiswa())->toBeTrue()
         ->and($chat->isSentByDosen())->toBeFalse();
+});
+
+it('resolves roles correctly when mahasiswa and dosen share the same id (regression)', function () {
+    // Force the collision that broke the old raw-id comparison: the mahasiswa
+    // and the dosen both have primary key 1.
+    $mahasiswa = Mahasiswa::forceCreate([
+        'id' => 1,
+        'nama' => 'Collision Mhs',
+        'nim' => '9990001',
+        'email' => 'collision@magnet.test',
+        'password' => bcrypt('password'),
+        'angkatan' => 22,
+        'jenis_kelamin' => 'L',
+        'tanggal_lahir' => '2003-01-01',
+        'jurusan' => 'Teknologi Informasi',
+        'program_studi' => 'D4 Teknik Informatika',
+        'alamat' => 'Jl. Test No. 1',
+        'status_magang' => 'sedang magang',
+    ]);
+
+    $dosen = DosenPembimbing::forceCreate([
+        'id' => 1,
+        'nama' => 'Collision Dosen',
+        'nidn' => '9990002',
+        'password' => bcrypt('password'),
+        'jenis_kelamin' => 'P',
+    ]);
+
+    expect($mahasiswa->id)->toBe($dosen->id);
+
+    $kontrak = KontrakMagang::forceCreate([
+        'mahasiswa_id' => $mahasiswa->id,
+        'dosen_id' => $dosen->id,
+        'lowongan_magang_id' => lowonganMagang()->id,
+        'waktu_awal' => now(),
+        'waktu_akhir' => now()->addMonths(3),
+        'status' => 'disetujui',
+    ]);
+
+    $fromMhs = Chat::create([
+        'kontrak_magang_id' => $kontrak->id,
+        'sender_id' => $mahasiswa->id,
+        'sender_type' => Chat::SENDER_MAHASISWA,
+        'receiver_id' => $dosen->id,
+        'receiver_type' => Chat::SENDER_DOSEN,
+        'message' => 'dari mahasiswa',
+    ]);
+
+    $fromDosen = Chat::create([
+        'kontrak_magang_id' => $kontrak->id,
+        'sender_id' => $dosen->id,
+        'sender_type' => Chat::SENDER_DOSEN,
+        'receiver_id' => $mahasiswa->id,
+        'receiver_type' => Chat::SENDER_MAHASISWA,
+        'message' => 'dari dosen',
+    ]);
+
+    // Same raw ids, opposite roles: the message must still resolve correctly.
+    expect($fromMhs->isSentByMahasiswa())->toBeTrue()
+        ->and($fromMhs->isSentByDosen())->toBeFalse()
+        ->and($fromDosen->isSentByDosen())->toBeTrue()
+        ->and($fromDosen->isSentByMahasiswa())->toBeFalse()
+        ->and($fromMhs->isMineFor(Chat::SENDER_MAHASISWA))->toBeTrue()
+        ->and($fromMhs->isMineFor(Chat::SENDER_DOSEN))->toBeFalse();
 });

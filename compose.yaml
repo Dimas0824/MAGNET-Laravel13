@@ -3,6 +3,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Baked into the JS bundle at build time; the browser connects from
+        # the host, so it reaches Reverb on the published localhost:8080.
+        VITE_REVERB_APP_KEY: ${REVERB_APP_KEY:-magnet-key}
+        VITE_REVERB_HOST: ${VITE_REVERB_HOST:-localhost}
+        VITE_REVERB_PORT: ${VITE_REVERB_PORT:-8080}
+        VITE_REVERB_SCHEME: ${VITE_REVERB_SCHEME:-http}
     image: ${IMAGE_TAG:-magnet-app:local}
     container_name: magnet_app
     restart: unless-stopped
@@ -31,8 +38,8 @@ services:
       REVERB_APP_ID: ${REVERB_APP_ID:-magnet}
       REVERB_APP_KEY: ${REVERB_APP_KEY:-magnet-key}
       REVERB_APP_SECRET: ${REVERB_APP_SECRET:-magnet-secret}
-      REVERB_HOST: ${REVERB_HOST:-localhost}
-      REVERB_PORT: ${REVERB_PORT:-8001}
+      REVERB_HOST: ${REVERB_SERVER_TARGET:-reverb}
+      REVERB_PORT: ${REVERB_SERVER_PORT:-8080}
       REVERB_SCHEME: ${REVERB_SCHEME:-http}
       PERF_LOG_ENABLED: "true"
       PERF_LOG_SAMPLE_RATE: "100"
@@ -69,8 +76,8 @@ services:
       REVERB_APP_ID: ${REVERB_APP_ID:-magnet}
       REVERB_APP_KEY: ${REVERB_APP_KEY:-magnet-key}
       REVERB_APP_SECRET: ${REVERB_APP_SECRET:-magnet-secret}
-      REVERB_HOST: ${REVERB_HOST:-localhost}
-      REVERB_PORT: ${REVERB_PORT:-8001}
+      REVERB_HOST: ${REVERB_SERVER_TARGET:-reverb}
+      REVERB_PORT: ${REVERB_SERVER_PORT:-8080}
       REVERB_SCHEME: ${REVERB_SCHEME:-http}
       SKIP_OPTIMIZE: "true"
     command: ["php", "artisan", "queue:work", "--queue=default", "--tries=3", "--timeout=120", "--sleep=3"]
@@ -140,8 +147,8 @@ services:
       REVERB_APP_ID: ${REVERB_APP_ID:-magnet}
       REVERB_APP_KEY: ${REVERB_APP_KEY:-magnet-key}
       REVERB_APP_SECRET: ${REVERB_APP_SECRET:-magnet-secret}
-      REVERB_HOST: ${REVERB_HOST:-localhost}
-      REVERB_PORT: ${REVERB_PORT:-8001}
+      REVERB_HOST: ${REVERB_SERVER_TARGET:-reverb}
+      REVERB_PORT: ${REVERB_SERVER_PORT:-8080}
       REVERB_SCHEME: ${REVERB_SCHEME:-http}
       REVERB_SERVER_HOST: 0.0.0.0
       REVERB_SERVER_PORT: 8080

@@ -3,6 +3,7 @@
 namespace App\Events;
 
 use App\Models\Chat;
+use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -16,7 +17,7 @@ class ChatMessageSent implements ShouldBroadcast
     public function __construct(public Chat $chat) {}
 
     /**
-     * @return array<int, \Illuminate\Broadcasting\Channel>
+     * @return array<int, Channel>
      */
     public function broadcastOn(): array
     {
@@ -39,7 +40,9 @@ class ChatMessageSent implements ShouldBroadcast
             'id' => $this->chat->id,
             'kontrak_magang_id' => $this->chat->kontrak_magang_id,
             'sender_id' => $this->chat->sender_id,
+            'sender_type' => $this->chat->sender_type,
             'receiver_id' => $this->chat->receiver_id,
+            'receiver_type' => $this->chat->receiver_type,
             'message' => $this->chat->message,
             'created_at' => $this->chat->created_at?->toIso8601String(),
         ];

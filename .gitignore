@@ -23,3 +23,6 @@ yarn-error.log
 /coverage-clover.xml
 /coverage
 /.phpunit.result.cache
+
+# Local agent tooling state
+.omo/

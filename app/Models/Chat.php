@@ -10,13 +10,19 @@ class Chat extends Model
 {
     use HasFactory;
 
+    public const SENDER_MAHASISWA = 'mahasiswa';
+
+    public const SENDER_DOSEN = 'dosen';
+
     /**
      * The attributes that are mass assignable.
      */
     protected $fillable = [
         'kontrak_magang_id',
         'sender_id',
+        'sender_type',
         'receiver_id',
+        'receiver_type',
         'message',
     ];
 
@@ -37,54 +43,53 @@ class Chat extends Model
     }
 
     /**
-     * Get sender (bisa mahasiswa atau dosen)
-     * Karena tidak ada sender_type, kita perlu menentukan berdasarkan kontrak
+     * Sender identity. Role comes from sender_type, never from raw id
+     * comparison, because mahasiswa.id and dosen.id share an id space and can
+     * collide (both = 1).
      */
     public function getSenderAttribute()
     {
-        if ($this->kontrakMagang) {
-            // Jika sender_id sama dengan mahasiswa_id dari kontrak, maka sender adalah mahasiswa
-            if ($this->sender_id == $this->kontrakMagang->mahasiswa_id) {
-                return $this->kontrakMagang->mahasiswa;
-            } else {
-                return $this->kontrakMagang->dosenPembimbing;
-            }
+        $kontrak = $this->kontrakMagang;
+
+        if (! $kontrak) {
+            return null;
         }
 
-        return null;
+        return $this->sender_type === self::SENDER_MAHASISWA
+            ? $kontrak->mahasiswa
+            : $kontrak->dosenPembimbing;
     }
 
     /**
-     * Get receiver (bisa mahasiswa atau dosen)
+     * Receiver identity, resolved the same way as the sender.
      */
     public function getReceiverAttribute()
     {
-        if ($this->kontrakMagang) {
-            // Jika receiver_id sama dengan mahasiswa_id dari kontrak, maka receiver adalah mahasiswa
-            if ($this->receiver_id == $this->kontrakMagang->mahasiswa_id) {
-                return $this->kontrakMagang->mahasiswa;
-            } else {
-                return $this->kontrakMagang->dosenPembimbing;
-            }
+        $kontrak = $this->kontrakMagang;
+
+        if (! $kontrak) {
+            return null;
         }
 
-        return null;
+        return $this->receiver_type === self::SENDER_MAHASISWA
+            ? $kontrak->mahasiswa
+            : $kontrak->dosenPembimbing;
     }
 
     /**
-     * Scope untuk pesan antara dua user dalam kontrak tertentu
+     * Scope untuk pesan antara dua user dalam kontrak tertentu.
+     * Matches on the participant role so id collisions cannot leak messages
+     * between a mahasiswa and an unrelated dosen with the same id.
      */
     public function scopeBetweenUsers($query, $user1Id, $user2Id, $kontrakMagangId)
     {
         return $query->where('kontrak_magang_id', $kontrakMagangId)
-            ->where(function ($q) use ($user1Id, $user2Id) {
-                $q->where(function ($subQ) use ($user1Id, $user2Id) {
-                    $subQ->where('sender_id', $user1Id)
-                        ->where('receiver_id', $user2Id);
-                })->orWhere(function ($subQ) use ($user1Id, $user2Id) {
-                    $subQ->where('sender_id', $user2Id)
-                        ->where('receiver_id', $user1Id);
-                });
+            ->where(function ($q) {
+                // A message is between the pair as long as its sender and
+                // receiver are the two distinct roles for this kontrak.
+                $q->whereIn('sender_type', [self::SENDER_MAHASISWA, self::SENDER_DOSEN])
+                    ->whereIn('receiver_type', [self::SENDER_MAHASISWA, self::SENDER_DOSEN])
+                    ->whereColumn('sender_type', '!=', 'receiver_type');
             });
     }
 
@@ -101,11 +106,7 @@ class Chat extends Model
      */
     public function isSentByMahasiswa(): bool
     {
-        if ($this->kontrakMagang) {
-            return $this->sender_id == $this->kontrakMagang->mahasiswa_id;
-        }
-
-        return false;
+        return $this->sender_type === self::SENDER_MAHASISWA;
     }
 
     /**
@@ -113,10 +114,16 @@ class Chat extends Model
      */
     public function isSentByDosen(): bool
     {
-        if ($this->kontrakMagang) {
-            return $this->sender_id == $this->kontrakMagang->dosen_id;
-        }
+        return $this->sender_type === self::SENDER_DOSEN;
+    }
 
-        return false;
+    /**
+     * Whether the given viewer (identified by role) is the author.
+     *
+     * @param  string  $role  'mahasiswa' | 'dosen'
+     */
+    public function isMineFor(string $role): bool
+    {
+        return $this->sender_type === $role;
     }
 }

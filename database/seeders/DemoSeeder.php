@@ -15,8 +15,8 @@ use App\Models\KriteriaJenisMagang;
 use App\Models\KriteriaLokasiMagang;
 use App\Models\KriteriaOpenRemote;
 use App\Models\KriteriaPekerjaan;
-use App\Models\LokasiMagang;
 use App\Models\LogMagang;
+use App\Models\LokasiMagang;
 use App\Models\LowonganMagang;
 use App\Models\Mahasiswa;
 use App\Models\Pekerjaan;
@@ -33,6 +33,8 @@ class DemoSeeder extends Seeder
 
     public function run(): void
     {
+        $this->resetDemoData();
+
         $this->seedMasterData();
         $this->seedAdmins();
         $dosen = $this->seedDosen();
@@ -40,6 +42,7 @@ class DemoSeeder extends Seeder
         [$aktif, $selesai, $baru] = $this->seedMahasiswa();
         $this->seedPreferensi($aktif);
         $this->seedPreferensi($selesai);
+        $this->seedPreferensi($baru);
 
         $perusahaan = $this->seedPerusahaan();
         $lowongan = $this->seedLowongan($perusahaan);
@@ -60,6 +63,44 @@ class DemoSeeder extends Seeder
                 ['Admin', Admin::first()->nip, 'Admin MAGNET'],
             ]
         );
+    }
+
+    private function resetDemoData(): void
+    {
+        // Idempotent re-run: remove the demo-owned rows (identified by their
+        // known credentials/handles) so the seeder produces the same linked
+        // dataset every time instead of tripping unique constraints.
+        $mahasiswaIds = Mahasiswa::whereIn('nim', ['24410706001', '24410706002', '24410706003'])->pluck('id');
+        $dosenIds = DosenPembimbing::where('nidn', '0012345678')->pluck('id');
+        $kontrakIds = KontrakMagang::whereIn('mahasiswa_id', $mahasiswaIds)->pluck('id');
+
+        Chat::whereIn('kontrak_magang_id', $kontrakIds)->delete();
+        LogMagang::whereIn('kontrak_magang_id', $kontrakIds)->delete();
+        UlasanMagang::whereIn('kontrak_magang_id', $kontrakIds)->delete();
+        UmpanBalikMagang::whereIn('kontrak_magang_id', $kontrakIds)->delete();
+        KontrakMagang::whereIn('id', $kontrakIds)->delete();
+
+        $berkasIds = BerkasPengajuanMagang::whereIn('mahasiswa_id', $mahasiswaIds)->pluck('id');
+        FormPengajuanMagang::whereIn('pengajuan_id', $berkasIds)->delete();
+        BerkasPengajuanMagang::whereIn('id', $berkasIds)->delete();
+
+        foreach ([
+            KriteriaPekerjaan::class,
+            KriteriaBidangIndustri::class,
+            KriteriaLokasiMagang::class,
+            KriteriaJenisMagang::class,
+            KriteriaOpenRemote::class,
+        ] as $kriteria) {
+            $kriteria::whereIn('mahasiswa_id', $mahasiswaIds)->delete();
+        }
+
+        $perusahaanIds = Perusahaan::where('nama', 'PT Teknologi Nusantara')->pluck('id');
+        LowonganMagang::withoutEvents(fn () => LowonganMagang::whereIn('perusahaan_id', $perusahaanIds)->delete());
+        Perusahaan::whereIn('id', $perusahaanIds)->delete();
+
+        Admin::where('nip', '198501012010011001')->delete();
+        DosenPembimbing::whereIn('id', $dosenIds)->delete();
+        Mahasiswa::whereIn('id', $mahasiswaIds)->delete();
     }
 
     private function seedMasterData(): void
@@ -250,14 +291,26 @@ class DemoSeeder extends Seeder
         Chat::forceCreate([
             'kontrak_magang_id' => $kontrak->id,
             'sender_id' => $mahasiswa->id,
+            'sender_type' => Chat::SENDER_MAHASISWA,
             'receiver_id' => $dosen->id,
+            'receiver_type' => Chat::SENDER_DOSEN,
             'message' => 'Selamat pagi Bu, saya izin bertanya soal modul minggu ini.',
         ]);
         Chat::forceCreate([
             'kontrak_magang_id' => $kontrak->id,
             'sender_id' => $dosen->id,
+            'sender_type' => Chat::SENDER_DOSEN,
             'receiver_id' => $mahasiswa->id,
+            'receiver_type' => Chat::SENDER_MAHASISWA,
             'message' => 'Pagi Budi, silakan kirim detail kendalanya lewat log ya.',
+        ]);
+        Chat::forceCreate([
+            'kontrak_magang_id' => $kontrak->id,
+            'sender_id' => $mahasiswa->id,
+            'sender_type' => Chat::SENDER_MAHASISWA,
+            'receiver_id' => $dosen->id,
+            'receiver_type' => Chat::SENDER_DOSEN,
+            'message' => 'Baik Bu, sudah saya catat di log harian. Terima kasih.',
         ]);
 
         UmpanBalikMagang::forceCreate([

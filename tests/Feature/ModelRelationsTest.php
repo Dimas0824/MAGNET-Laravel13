@@ -86,7 +86,9 @@ it('cascades logs, ulasan, umpan balik and chats under a kontrak', function () {
     Chat::create([
         'kontrak_magang_id' => $kontrak->id,
         'sender_id' => $kontrak->mahasiswa_id,
+        'sender_type' => Chat::SENDER_MAHASISWA,
         'receiver_id' => $kontrak->dosen_id,
+        'receiver_type' => Chat::SENDER_DOSEN,
         'message' => 'Halo',
     ]);
 
@@ -127,7 +129,9 @@ it('identifies chat sender as mahasiswa when sender_id matches the kontrak', fun
     $chat = Chat::create([
         'kontrak_magang_id' => $kontrak->id,
         'sender_id' => $kontrak->mahasiswa_id,
+        'sender_type' => Chat::SENDER_MAHASISWA,
         'receiver_id' => $kontrak->dosen_id,
+        'receiver_type' => Chat::SENDER_DOSEN,
         'message' => 'Hi',
     ]);
 
