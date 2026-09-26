@@ -13,9 +13,10 @@ class Perusahaan extends Model
     protected $table = 'perusahaan';
 
     protected $fillable = [
+        'tenant_id',
         'nama',
         'bidang_industri_id',
-        'lokasi',
+        'lokasi_magang_id',
         'kategori',
         'logo',
         'website',
@@ -26,6 +27,11 @@ class Perusahaan extends Model
         'kategori' => 'string',
         'rating' => 'float',
     ];
+
+    public function lokasiMagang()
+    {
+        return $this->belongsTo(LokasiMagang::class, 'lokasi_magang_id');
+    }
 
     public function lowonganMagang()
     {

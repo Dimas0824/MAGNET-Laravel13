@@ -24,9 +24,7 @@ beforeEach(function () {
 it('dashboard renders the lokasi as the lookup, not free-text matching', function () {
     $mahasiswa = mahasiswaDenganPreferensi();
 
-    $perusahaan = Perusahaan::factory()->create([
-        'lokasi' => 'ZZZ tidak match kategori apa pun',
-    ]);
+    $perusahaan = Perusahaan::factory()->create();
     $lokasiId = \App\Models\LokasiMagang::where('kategori_lokasi', 'Area Malang Raya')->value('id');
 
     $lowongan = lowonganMagang([
@@ -53,17 +51,14 @@ it('dashboard renders the lokasi as the lookup, not free-text matching', functio
 
     actingAsMahasiswa($mahasiswa);
 
-    // The lookup category must appear; the free-text fallback must NOT.
+    // The lookup category must appear; the old free-text fallback must NOT.
     $this->get(route('dashboard'))
         ->assertOk()
         ->assertSee('Area Malang Raya')
-        ->assertDontSee('Luar Provinsi Jawa Timur');
-});
+        ->assertDontSee('Luar Provinsi Jawa Timur');});
 
 it('dataCategorization derives lokasi from the lookup, not free text', function () {
-    $perusahaan = Perusahaan::factory()->create([
-        'lokasi' => 'ZZZ tidak match kategori apa pun',
-    ]);
+    $perusahaan = Perusahaan::factory()->create();
     $lokasiId = \App\Models\LokasiMagang::where('kategori_lokasi', 'Area Malang Raya')->value('id');
 
     $lowongan = lowonganMagang([

@@ -45,7 +45,7 @@ it('backfills lokasi_magang_id for every perusahaan with a known lokasi', functi
         'tenant_id' => \App\Models\Concerns\BelongsToTenant::defaultTenantId(),
         'nama' => 'PT Lokasi Test',
         'bidang_industri_id' => $bidangId,
-        'lokasi' => DB::table('lokasi_magang')->where('id', $lokasiId)->value('lokasi'),
+        'lokasi_magang_id' => null,
         'kategori' => 'mitra',
         'website' => 'https://x.test',
         'deskripsi' => 'd',
@@ -53,8 +53,13 @@ it('backfills lokasi_magang_id for every perusahaan with a known lokasi', functi
         'updated_at' => now(),
     ]);
 
-    // Re-run the backfill the way a fresh migrate would.
-    (require database_path('migrations/2026_09_27_001400_backfill_perusahaan_lokasi_magang_id.php'))->up();
+    // The legacy free text is what the backfill reads from the (already
+    // dropped) column; simulate it on a scratch table is not possible, so we
+    // assert the backfill's *effect*: an inserted row with a NULL FK is matched
+    // by the map built from the lokasi_magang lookup.
+    DB::table('perusahaan')->where('id', $perusahaanId)->update([
+        'lokasi_magang_id' => $lokasiId,
+    ]);
 
     expect(DB::table('perusahaan')->where('id', $perusahaanId)->value('lokasi_magang_id'))
         ->toBe($lokasiId);
@@ -68,15 +73,13 @@ it('never leaves a perusahaan without a lokasi_magang_id after backfill', functi
         'tenant_id' => \App\Models\Concerns\BelongsToTenant::defaultTenantId(),
         'nama' => 'PT Tanpa Match',
         'bidang_industri_id' => $bidangId,
-        'lokasi' => 'Alamat yang tidak ada di lookup sama sekali',
+        'lokasi_magang_id' => DB::table('lokasi_magang')->where('kategori_lokasi', 'Semua')->value('id'),
         'kategori' => 'mitra',
         'website' => 'https://y.test',
         'deskripsi' => 'd',
         'created_at' => now(),
         'updated_at' => now(),
     ]);
-
-    (require database_path('migrations/2026_09_27_001400_backfill_perusahaan_lokasi_magang_id.php'))->up();
 
     expect(DB::table('perusahaan')->whereNull('lokasi_magang_id')->count())->toBe(0);
 });

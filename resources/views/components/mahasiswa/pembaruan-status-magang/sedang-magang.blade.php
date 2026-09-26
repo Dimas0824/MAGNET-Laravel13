@@ -248,8 +248,9 @@ $getInternshipInfo = function () {
 
         if ($kontrak && $kontrak->lowonganMagang && $kontrak->lowonganMagang->perusahaan) {
             $perusahaan = $kontrak->lowonganMagang->perusahaan;
+            $lokasi = $kontrak->lowonganMagang->lokasiMagang->lokasi ?? '';
 
-            return "{$perusahaan->nama} - {$perusahaan->lokasi}";
+            return trim("{$perusahaan->nama} - {$lokasi}", ' -');
         }
 
         return 'Lokasi magang belum ditentukan';
@@ -437,7 +438,7 @@ $getStatusBadgeClass = function ($status) {
                             <div>
                                 <p class="text-sm text-gray-600">Lokasi</p>
                                 <p class="font-semibold text-gray-900">
-                                    {{ $existing_contract->lowonganMagang->perusahaan->lokasi }}</p>
+                                    {{ $existing_contract->lowonganMagang->lokasiMagang->lokasi ?? '-' }}</p>
                             </div>
                         @endif
                         @if ($existing_contract->dosenPembimbing)

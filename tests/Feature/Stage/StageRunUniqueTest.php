@@ -59,7 +59,7 @@ it('rejects a duplicate (run_id, lowongan_magang_id) row in a stage table', func
             'tenant_id' => \App\Models\Concerns\BelongsToTenant::defaultTenantId(),
             'nama' => 'PT DUP',
             'bidang_industri_id' => DB::table('bidang_industri')->value('id'),
-            'lokasi' => 'x',
+            'lokasi_magang_id' => DB::table('lokasi_magang')->value('id'),
             'kategori' => 'mitra',
             'website' => 'https://dup.test',
             'deskripsi' => 'd',

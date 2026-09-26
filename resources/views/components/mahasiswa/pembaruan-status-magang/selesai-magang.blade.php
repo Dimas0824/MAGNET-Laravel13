@@ -170,7 +170,9 @@ $getInternshipInfo = function () {
     }
 
     $perusahaan = $this->kontrak_magang->lowonganMagang->perusahaan;
-    return "{$perusahaan->nama} - {$perusahaan->lokasi}";
+    $lokasi = $this->kontrak_magang->lowonganMagang->lokasiMagang->lokasi ?? '';
+
+    return trim("{$perusahaan->nama} - {$lokasi}", ' -');
 };
 
 $isCurrentlyDoingInternship = function () {

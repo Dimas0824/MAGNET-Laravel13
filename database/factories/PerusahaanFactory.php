@@ -30,7 +30,7 @@ class PerusahaanFactory extends Factory
             'tenant_id' => BelongsToTenant::defaultTenantId(),
             'nama' => $this->faker->company(),
             'bidang_industri_id' => $this->faker->randomElement($bidangIndustriIds),
-            'lokasi' => $this->faker->address(),
+            'lokasi_magang_id' => \App\Models\LokasiMagang::query()->inRandomOrder()->value('id'),
             'kategori' => $this->faker->randomElement(['mitra', 'non_mitra']),
             'website' => $this->faker->url(),
             'deskripsi' => $this->faker->paragraph(),

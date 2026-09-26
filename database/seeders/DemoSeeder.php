@@ -234,7 +234,7 @@ class DemoSeeder extends Seeder
             'tenant_id' => $this->tenantId(),
             'nama' => 'PT Teknologi Nusantara',
             'bidang_industri_id' => BidangIndustri::where('nama', 'Teknologi')->value('id'),
-            'lokasi' => 'Lowokwaru, Kota Malang, Jawa Timur',
+            'lokasi_magang_id' => LokasiMagang::where('kategori_lokasi', 'Area Malang Raya')->value('id'),
             'kategori' => 'mitra',
             'rating' => 4.5,
             'logo' => null,

@@ -440,7 +440,7 @@ $getRemoteLabel = function ($remote) {
                                             </p>
                                             <div class="flex items-center justify-between mt-1">
                                                 <span class="text-xs text-gray-500">
-                                                    {{ $item->perusahaan->lokasi ?? 'Lokasi tidak tersedia' }}
+                                                    {{ $item->lokasiMagang->lokasi ?? 'Lokasi tidak tersedia' }}
                                                 </span>
                                                 @if ($item->perusahaan->rating)
                                                     <div class="flex items-center gap-1 text-xs">

@@ -35,8 +35,22 @@ mount(function (int $id) {
     $this->rataRating = $this->totalUlasan > 0 ? round($ulasanData->avg('rating'), 1) : 0;
 });
 
-$lowonganLainnya = computed(function () {
-    try {
+// Location now comes from the lokasi_magang lookup via the company's openings
+// (perusahaan.lokasi free text was dropped in P5-T4).
+$lokasiLabel = computed(function () {
+    if (! $this->perusahaan) {
+        return null;
+    }
+
+    return LowonganMagang::where('perusahaan_id', $this->perusahaan->id)
+        ->with('lokasiMagang')
+        ->get()
+        ->map(fn ($l) => $l->lokasiMagang->lokasi ?? null)
+        ->filter()
+        ->first();
+});
+
+$lowonganLainnya = computed(function () {    try {
         if (! $this->perusahaan) {
             return collect();
         }
@@ -81,7 +95,7 @@ $lowonganLainnya = computed(function () {
                             <div class="space-y-2">
                                 <div class="flex items-center text-gray-600">
                                     <flux:icon.map-pin class="mr-2 h-4 w-4" />
-                                    <span>{{ $perusahaan->lokasi }}</span>
+                                    <span>{{ $this->lokasiLabel ?? 'Lokasi tidak tersedia' }}</span>
                                 </div>
                                 <div class="flex items-center text-gray-600">
                                     <flux:icon.building class="mr-2 h-4 w-4" />
