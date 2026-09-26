@@ -2,8 +2,12 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
+
 class Mahasiswa extends UserBase
 {
+    use BelongsToTenant;
+
     protected $table = 'mahasiswa';
 
     protected $fillable = [

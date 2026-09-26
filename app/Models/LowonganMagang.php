@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use App\Events\LowonganMagangCreatedOrUpdated;
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class LowonganMagang extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToTenant;
 
     protected $table = 'lowongan_magang';
 

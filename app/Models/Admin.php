@@ -2,8 +2,12 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
+
 class Admin extends UserBase
 {
+    use BelongsToTenant;
+
     protected $table = 'admin';
 
     protected $fillable = [
