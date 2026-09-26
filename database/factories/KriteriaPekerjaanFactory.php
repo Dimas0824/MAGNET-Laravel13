@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Helpers\DecisionMaking\ROC;
 use App\Models\KriteriaPekerjaan;
 use App\Models\Mahasiswa;
+use App\Models\MahasiswaKriteria;
 use App\Models\Pekerjaan;
 use App\Traits\BaseKriteriaFactory;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -31,6 +32,7 @@ class KriteriaPekerjaanFactory extends Factory
         $rank = $this->faker->numberBetween(1, config('recommendation-system.roc.total_criteria'));
 
         return [
+            'criteria_key' => MahasiswaKriteria::KEY_PEKERJAAN,
             'pekerjaan_id' => $this->faker->randomElement($pekerjaanIds),
             'mahasiswa_id' => $this->faker->randomElement($mahasiswaIds),
         ];

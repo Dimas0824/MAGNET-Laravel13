@@ -66,49 +66,37 @@ mount(function () {
 $loadUserPreferences = function ($userId) {
     $preferences = [];
 
-    $pekerjaanPref = DB::table('kriteria_pekerjaan')
+    // P3-T4: read the collapsed `mahasiswa_kriteria` table (the new single
+    // source of truth) instead of the legacy 5 `kriteria_*` tables. One query
+    // returns every criterion for this mahasiswa, keyed by criteria_key.
+    $rows = DB::table('mahasiswa_kriteria')
         ->where('mahasiswa_id', $userId)
-        ->orderBy('rank', 'asc')
-        ->first();
+        ->get()
+        ->keyBy('criteria_key');
 
+    $pekerjaanPref = $rows->get('pekerjaan');
     if ($pekerjaanPref) {
         $preferences['pekerjaan'] = $pekerjaanPref->pekerjaan_id;
     }
 
-    $bidangPref = DB::table('kriteria_bidang_industri')
-        ->where('mahasiswa_id', $userId)
-        ->orderBy('rank', 'asc')
-        ->first();
-
+    $bidangPref = $rows->get('bidang_industri');
     if ($bidangPref) {
         $preferences['bidang_industri'] = $bidangPref->bidang_industri_id;
     }
 
-    $lokasiPref = DB::table('kriteria_lokasi_magang')
-        ->where('mahasiswa_id', $userId)
-        ->orderBy('rank', 'asc')
-        ->first();
-
+    $lokasiPref = $rows->get('lokasi_magang');
     if ($lokasiPref) {
         $preferences['lokasi_magang_id'] = $lokasiPref->lokasi_magang_id;
     }
 
-    $jenisPref = DB::table('kriteria_jenis_magang')
-        ->where('mahasiswa_id', $userId)
-        ->orderBy('rank', 'asc')
-        ->first();
-
+    $jenisPref = $rows->get('jenis_magang');
     if ($jenisPref) {
-        $preferences['jenis_magang'] = $jenisPref->jenis_magang;
+        $preferences['jenis_magang'] = $jenisPref->value_enum;
     }
 
-    $remotePref = DB::table('kriteria_open_remote')
-        ->where('mahasiswa_id', $userId)
-        ->orderBy('rank', 'asc')
-        ->first();
-
+    $remotePref = $rows->get('open_remote');
     if ($remotePref) {
-        $preferences['open_remote'] = $remotePref->open_remote;
+        $preferences['open_remote'] = $remotePref->value_enum;
     }
 
     $pekerjaanIds = array_filter([$preferences['pekerjaan'] ?? null]);

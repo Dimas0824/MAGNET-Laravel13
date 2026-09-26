@@ -4,10 +4,11 @@ namespace App\Models;
 
 class KriteriaOpenRemote extends BaseKriteriaModel
 {
-    protected $table = 'kriteria_open_remote';
+    protected const CRITERIA_KEY = MahasiswaKriteria::KEY_OPEN_REMOTE;
 
     protected $fillable = [
-        'open_remote',
         'mahasiswa_id',
+        'criteria_key',
+        'open_remote',
     ];
 }

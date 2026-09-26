@@ -4,11 +4,12 @@ namespace App\Models;
 
 class KriteriaBidangIndustri extends BaseKriteriaModel
 {
-    protected $table = 'kriteria_bidang_industri';
+    protected const CRITERIA_KEY = MahasiswaKriteria::KEY_BIDANG_INDUSTRI;
 
     protected $fillable = [
-        'bidang_industri_id',
         'mahasiswa_id',
+        'criteria_key',
+        'bidang_industri_id',
     ];
 
     public function bidangIndustri()

@@ -2,14 +2,10 @@
 
 use App\Helpers\DecisionMaking\ROC;
 use App\Models\BidangIndustri;
-use App\Models\KriteriaBidangIndustri;
-use App\Models\KriteriaJenisMagang;
-use App\Models\KriteriaLokasiMagang;
-use App\Models\KriteriaOpenRemote;
-use App\Models\KriteriaPekerjaan;
 use App\Models\LokasiMagang;
 use App\Models\LowonganMagang;
 use App\Models\Mahasiswa;
+use App\Models\MahasiswaKriteria;
 use App\Models\Pekerjaan;
 use App\Models\Perusahaan;
 
@@ -60,6 +56,9 @@ function seedMasterData(): void
 /**
  * Build a lengkap mahasiswa with the 5 criterion preferences set.
  * Returns the persisted model.
+ *
+ * P3-T4: preferences are written to the collapsed `mahasiswa_kriteria` table
+ * (the new single source of truth); the legacy `kriteria_*` tables stay empty.
  */function mahasiswaDenganPreferensi(array $overrides = []): Mahasiswa
 {
     seedMasterData();
@@ -68,37 +67,42 @@ function seedMasterData(): void
 
     $total = config('recommendation-system.roc.total_criteria');
 
-    KriteriaPekerjaan::forceCreate([
+    MahasiswaKriteria::forceCreate([
         'mahasiswa_id' => $mahasiswa->id,
+        'criteria_key' => MahasiswaKriteria::KEY_PEKERJAAN,
         'pekerjaan_id' => Pekerjaan::where('nama', 'Software Engineer')->value('id'),
         'rank' => 1,
         'bobot' => ROC::getWeight(1, $total),
     ]);
 
-    KriteriaBidangIndustri::forceCreate([
+    MahasiswaKriteria::forceCreate([
         'mahasiswa_id' => $mahasiswa->id,
+        'criteria_key' => MahasiswaKriteria::KEY_BIDANG_INDUSTRI,
         'bidang_industri_id' => BidangIndustri::where('nama', 'Teknologi')->value('id'),
         'rank' => 2,
         'bobot' => ROC::getWeight(2, $total),
     ]);
 
-    KriteriaLokasiMagang::forceCreate([
+    MahasiswaKriteria::forceCreate([
         'mahasiswa_id' => $mahasiswa->id,
+        'criteria_key' => MahasiswaKriteria::KEY_LOKASI_MAGANG,
         'lokasi_magang_id' => LokasiMagang::where('kategori_lokasi', 'Area Malang Raya')->value('id'),
         'rank' => 3,
         'bobot' => ROC::getWeight(3, $total),
     ]);
 
-    KriteriaJenisMagang::forceCreate([
+    MahasiswaKriteria::forceCreate([
         'mahasiswa_id' => $mahasiswa->id,
-        'jenis_magang' => 'berbayar',
+        'criteria_key' => MahasiswaKriteria::KEY_JENIS_MAGANG,
+        'value_enum' => 'berbayar',
         'rank' => 4,
         'bobot' => ROC::getWeight(4, $total),
     ]);
 
-    KriteriaOpenRemote::forceCreate([
+    MahasiswaKriteria::forceCreate([
         'mahasiswa_id' => $mahasiswa->id,
-        'open_remote' => 'ya',
+        'criteria_key' => MahasiswaKriteria::KEY_OPEN_REMOTE,
+        'value_enum' => 'ya',
         'rank' => 5,
         'bobot' => ROC::getWeight(5, $total),
     ]);

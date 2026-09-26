@@ -6,6 +6,7 @@ use App\Helpers\DecisionMaking\ROC;
 use App\Models\KriteriaLokasiMagang;
 use App\Models\LokasiMagang;
 use App\Models\Mahasiswa;
+use App\Models\MahasiswaKriteria;
 use App\Traits\BaseKriteriaFactory;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -32,6 +33,7 @@ class KriteriaLokasiMagangFactory extends Factory
         $rank = $this->faker->numberBetween(1, config('recommendation-system.roc.total_criteria'));
 
         return [
+            'criteria_key' => MahasiswaKriteria::KEY_LOKASI_MAGANG,
             'lokasi_magang_id' => $this->faker->randomElement($lokasiIds),
             'mahasiswa_id' => $this->faker->randomElement($mahasiswaIds),
         ];

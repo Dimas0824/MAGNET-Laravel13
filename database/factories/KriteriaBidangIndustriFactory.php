@@ -6,6 +6,7 @@ use App\Helpers\DecisionMaking\ROC;
 use App\Models\BidangIndustri;
 use App\Models\KriteriaBidangIndustri;
 use App\Models\Mahasiswa;
+use App\Models\MahasiswaKriteria;
 use App\Traits\BaseKriteriaFactory;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -32,6 +33,7 @@ class KriteriaBidangIndustriFactory extends Factory
         $rank = $this->faker->numberBetween(1, config('recommendation-system.roc.total_criteria'));
 
         return [
+            'criteria_key' => MahasiswaKriteria::KEY_BIDANG_INDUSTRI,
             'bidang_industri_id' => $this->faker->randomElement($bidangIds),
             'mahasiswa_id' => $this->faker->randomElement($mahasiswaIds),
         ];

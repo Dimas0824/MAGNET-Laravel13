@@ -4,10 +4,11 @@ namespace App\Models;
 
 class KriteriaJenisMagang extends BaseKriteriaModel
 {
-    protected $table = 'kriteria_jenis_magang';
+    protected const CRITERIA_KEY = MahasiswaKriteria::KEY_JENIS_MAGANG;
 
     protected $fillable = [
-        'jenis_magang',
         'mahasiswa_id',
+        'criteria_key',
+        'jenis_magang',
     ];
 }
