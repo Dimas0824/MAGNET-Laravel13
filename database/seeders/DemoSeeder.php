@@ -62,6 +62,18 @@ class DemoSeeder extends Seeder
         $this->seedPreferensi($selesai);
         $this->seedPreferensi($baru);
 
+        // Link every identity into the users registry (the backfill migration
+        // ran against an empty DB). Chats + audit reference users.id, so this
+        // must happen before any chat is created.
+        $this->linkRegistry();
+
+        // Refresh the in-memory identity models so their freshly-stamped
+        // user_id is visible when chats are created below.
+        $dosen->refresh();
+        $aktif->refresh();
+        $selesai->refresh();
+        $baru->refresh();
+
         $perusahaan = $this->seedPerusahaan();
         $lowongan = $this->seedLowongan($perusahaan);
 
@@ -83,6 +95,17 @@ class DemoSeeder extends Seeder
         );
     }
 
+    /**
+     * Link the demo identities into the users registry and stamp their user_id
+     * (the backfill migrations ran against the empty DB before seeding).
+     */
+    private function linkRegistry(): void
+    {
+        (new \Database\Seeders\TenantBackfillSeeder)->run();
+        (require database_path('migrations/2026_09_27_000600_backfill_users_registry.php'))->up();
+        (require database_path('migrations/2026_09_27_000800_backfill_user_id_on_auth_tables.php'))->up();
+    }
+
     private function resetDemoData(): void
     {
         // Idempotent re-run: remove the demo-owned rows (identified by their
@@ -96,7 +119,10 @@ class DemoSeeder extends Seeder
         LogMagang::whereIn('kontrak_magang_id', $kontrakIds)->delete();
         UlasanMagang::whereIn('kontrak_magang_id', $kontrakIds)->delete();
         UmpanBalikMagang::whereIn('kontrak_magang_id', $kontrakIds)->delete();
-        KontrakMagang::whereIn('id', $kontrakIds)->delete();
+        // forceDelete: kontrak rows are soft-deletable (P6-T4), but a demo
+        // reset must remove them physically or the RESTRICT FK to
+        // lowongan_magang would keep them alive.
+        KontrakMagang::withTrashed()->whereIn('id', $kontrakIds)->forceDelete();
 
         $berkasIds = BerkasPengajuanMagang::whereIn('mahasiswa_id', $mahasiswaIds)->pluck('id');
         FormPengajuanMagang::whereIn('pengajuan_id', $berkasIds)->delete();
@@ -118,7 +144,8 @@ class DemoSeeder extends Seeder
 
         Admin::where('nip', '198501012010011001')->delete();
         DosenPembimbing::whereIn('id', $dosenIds)->delete();
-        Mahasiswa::whereIn('id', $mahasiswaIds)->delete();
+        // forceDelete: mahasiswa is soft-deletable (P6-T4); a reset removes it.
+        Mahasiswa::withTrashed()->whereIn('id', $mahasiswaIds)->forceDelete();
     }
 
     private function seedMasterData(): void
@@ -317,26 +344,20 @@ class DemoSeeder extends Seeder
 
         Chat::forceCreate([
             'kontrak_magang_id' => $kontrak->id,
-            'sender_id' => $mahasiswa->id,
-            'sender_type' => Chat::SENDER_MAHASISWA,
-            'receiver_id' => $dosen->id,
-            'receiver_type' => Chat::SENDER_DOSEN,
+            'sender_user_id' => $mahasiswa->user_id,
+            'receiver_user_id' => $dosen->user_id,
             'message' => 'Selamat pagi Bu, saya izin bertanya soal modul minggu ini.',
         ]);
         Chat::forceCreate([
             'kontrak_magang_id' => $kontrak->id,
-            'sender_id' => $dosen->id,
-            'sender_type' => Chat::SENDER_DOSEN,
-            'receiver_id' => $mahasiswa->id,
-            'receiver_type' => Chat::SENDER_MAHASISWA,
+            'sender_user_id' => $dosen->user_id,
+            'receiver_user_id' => $mahasiswa->user_id,
             'message' => 'Pagi Budi, silakan kirim detail kendalanya lewat log ya.',
         ]);
         Chat::forceCreate([
             'kontrak_magang_id' => $kontrak->id,
-            'sender_id' => $mahasiswa->id,
-            'sender_type' => Chat::SENDER_MAHASISWA,
-            'receiver_id' => $dosen->id,
-            'receiver_type' => Chat::SENDER_DOSEN,
+            'sender_user_id' => $mahasiswa->user_id,
+            'receiver_user_id' => $dosen->user_id,
             'message' => 'Baik Bu, sudah saya catat di log harian. Terima kasih.',
         ]);
 
