@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Traits\HasMultiMOORAProcess;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class FinalRankRecommendation extends Model
 {
@@ -19,6 +21,30 @@ class FinalRankRecommendation extends Model
         'reference_point_id',
         'fmf_id',
     ];
+
+    /**
+     * Newest row per (mahasiswa, lowongan_magang_id), resolved in SQL so callers
+     * no longer load the whole table and de-duplicate in PHP.
+     */
+    public function scopeLatestPerLowongan(Builder $query): Builder
+    {
+        $table = $this->getTable();
+
+        return $query->whereIn($table.'.id', function ($sub) use ($table) {
+            $sub->selectRaw('MAX(frr.id)')
+                ->from($table.' as frr')
+                ->joinSub(
+                    DB::table($table)
+                        ->select('mahasiswa_id', 'lowongan_magang_id', DB::raw('MAX(created_at) as latest_created_at'))
+                        ->groupBy('mahasiswa_id', 'lowongan_magang_id'),
+                    'latest',
+                    fn ($join) => $join->on('frr.lowongan_magang_id', '=', 'latest.lowongan_magang_id')
+                        ->on('frr.created_at', '=', 'latest.latest_created_at')
+                        ->on('frr.mahasiswa_id', '=', 'latest.mahasiswa_id')
+                )
+                ->groupBy('frr.mahasiswa_id', 'frr.lowongan_magang_id');
+        });
+    }
 
     public function mahasiswa()
     {

@@ -62,3 +62,40 @@ it('computes the history without MySQL-only SQL functions', function () {
         ->and($sql)->not->toContain('MINUTE(')
         ->and($sql)->not->toContain('LPAD(');
 });
+
+it('does not load the whole final_rank table to build the history page', function () {
+    $mahasiswa = mahasiswaDenganPreferensi();
+
+    // Far more history than a single page should ever hydrate.
+    seedFinalRanks($mahasiswa, 60);
+    actingAsMahasiswa($mahasiswa);
+
+    DB::enableQueryLog();
+    $this->get(route('mahasiswa.riwayat-rekomendasi'))->assertOk();
+    $log = DB::getQueryLog();
+    DB::disableQueryLog();
+
+    // Every query that reads final_rank_recommendation must be bounded by a
+    // LIMIT (or be an aggregate) — never an unbounded row load.
+    $unbounded = collect($log)->filter(function (array $entry) {
+        $sql = strtolower($entry['query']);
+
+        $readsTable = str_contains($sql, 'final_rank_recommendation');
+        $unbounded = ! str_contains($sql, 'limit ');
+        $isAggregate = str_contains($sql, 'count(') || str_contains($sql, 'max(') || str_contains($sql, 'min(') || str_contains($sql, 'sum(') || str_contains($sql, 'avg(');
+
+        return $readsTable && $unbounded && ! $isAggregate;
+    });
+
+    expect($unbounded)->toBeEmpty(
+        'History page issued an unbounded final_rank_recommendation query: '.
+        $unbounded->pluck('query')->implode(' | ')
+    );
+
+    // And no single query returns more than a page worth of rows.
+    $maxRows = collect($log)
+        ->filter(fn (array $e) => str_contains($e['query'], 'final_rank_recommendation'))
+        ->count();
+
+    expect($maxRows)->toBeLessThanOrEqual(6);
+});

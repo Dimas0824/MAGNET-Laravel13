@@ -106,43 +106,91 @@ $categorizeLocation = function ($lokasi) {
 $loadUserPreferences = function ($userId) {
     $preferences = [];
 
-    // Get job preference
-    $pekerjaanPref = DB::table('kriteria_pekerjaan')->join('pekerjaan', 'kriteria_pekerjaan.pekerjaan_id', '=', 'pekerjaan.id')->where('kriteria_pekerjaan.mahasiswa_id', $userId)->orderBy('kriteria_pekerjaan.rank', 'asc')->first();
+    $pekerjaanPref = DB::table('kriteria_pekerjaan')
+        ->where('mahasiswa_id', $userId)
+        ->orderBy('rank', 'asc')
+        ->first();
 
     if ($pekerjaanPref) {
-        $preferences['pekerjaan'] = $pekerjaanPref->nama;
+        $preferences['pekerjaan'] = $pekerjaanPref->pekerjaan_id;
     }
 
-    // Get industry preference
-    $bidangPref = DB::table('kriteria_bidang_industri')->join('bidang_industri', 'kriteria_bidang_industri.bidang_industri_id', '=', 'bidang_industri.id')->where('kriteria_bidang_industri.mahasiswa_id', $userId)->orderBy('kriteria_bidang_industri.rank', 'asc')->first();
+    $bidangPref = DB::table('kriteria_bidang_industri')
+        ->where('mahasiswa_id', $userId)
+        ->orderBy('rank', 'asc')
+        ->first();
 
     if ($bidangPref) {
-        $preferences['bidang_industri'] = $bidangPref->nama;
+        $preferences['bidang_industri'] = $bidangPref->bidang_industri_id;
     }
 
-    // Get location preference
-    $lokasiPref = DB::table('kriteria_lokasi_magang')->join('lokasi_magang', 'kriteria_lokasi_magang.lokasi_magang_id', '=', 'lokasi_magang.id')->where('kriteria_lokasi_magang.mahasiswa_id', $userId)->orderBy('kriteria_lokasi_magang.rank', 'asc')->first();
+    $lokasiPref = DB::table('kriteria_lokasi_magang')
+        ->where('mahasiswa_id', $userId)
+        ->orderBy('rank', 'asc')
+        ->first();
 
     if ($lokasiPref) {
-        $originalPreference = $lokasiPref->kategori_lokasi;
-        $preferences['lokasi'] = $this->isAllPreference($originalPreference) ? $originalPreference : $this->categorizeLocation($originalPreference);
+        $preferences['lokasi_magang_id'] = $lokasiPref->lokasi_magang_id;
     }
 
-    // Get internship type preference
-    $jenisPref = DB::table('kriteria_jenis_magang')->where('mahasiswa_id', $userId)->orderBy('rank', 'asc')->first();
+    $jenisPref = DB::table('kriteria_jenis_magang')
+        ->where('mahasiswa_id', $userId)
+        ->orderBy('rank', 'asc')
+        ->first();
 
     if ($jenisPref) {
         $preferences['jenis_magang'] = $jenisPref->jenis_magang;
     }
 
-    // Get remote preference
-    $remotePref = DB::table('kriteria_open_remote')->where('mahasiswa_id', $userId)->orderBy('rank', 'asc')->first();
+    $remotePref = DB::table('kriteria_open_remote')
+        ->where('mahasiswa_id', $userId)
+        ->orderBy('rank', 'asc')
+        ->first();
 
     if ($remotePref) {
         $preferences['open_remote'] = $remotePref->open_remote;
     }
 
-    return $preferences;
+    $pekerjaanIds = array_filter([$preferences['pekerjaan'] ?? null]);
+    $bidangIds = array_filter([$preferences['bidang_industri'] ?? null]);
+    $lokasiIds = array_filter([$preferences['lokasi_magang_id'] ?? null]);
+
+    $pekerjaanNama = $pekerjaanIds
+        ? DB::table('pekerjaan')->whereIn('id', $pekerjaanIds)->pluck('nama', 'id')
+        : collect();
+    $bidangNama = $bidangIds
+        ? DB::table('bidang_industri')->whereIn('id', $bidangIds)->pluck('nama', 'id')
+        : collect();
+    $lokasiKategori = $lokasiIds
+        ? DB::table('lokasi_magang')->whereIn('id', $lokasiIds)->pluck('kategori_lokasi', 'id')
+        : collect();
+
+    $resolved = [];
+
+    if (isset($preferences['pekerjaan'])) {
+        $resolved['pekerjaan'] = $pekerjaanNama[$preferences['pekerjaan']] ?? null;
+    }
+
+    if (isset($preferences['bidang_industri'])) {
+        $resolved['bidang_industri'] = $bidangNama[$preferences['bidang_industri']] ?? null;
+    }
+
+    if (isset($preferences['lokasi_magang_id'])) {
+        $original = $lokasiKategori[$preferences['lokasi_magang_id']] ?? null;
+        if ($original !== null) {
+            $resolved['lokasi'] = $this->isAllPreference($original) ? $original : $this->categorizeLocation($original);
+        }
+    }
+
+    if (isset($preferences['jenis_magang'])) {
+        $resolved['jenis_magang'] = $preferences['jenis_magang'];
+    }
+
+    if (isset($preferences['open_remote'])) {
+        $resolved['open_remote'] = $preferences['open_remote'];
+    }
+
+    return $resolved;
 };
 
 // Check if preference is "all"

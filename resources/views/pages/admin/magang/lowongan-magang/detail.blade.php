@@ -21,9 +21,9 @@ state([
     'jumlah_mhs_magang',
     'sisa_kuota',
 
-    'perusahaan_list' => Perusahaan::select('id', 'nama')->get()->toArray(),
-    'pekerjaan_list' => Pekerjaan::select('id', 'nama')->get()->toArray(),
-    'lokasi_list' => LokasiMagang::select('id', 'lokasi')->get()->toArray(),
+    'perusahaan_list' => [],
+    'pekerjaan_list' => [],
+    'lokasi_list' => [],
 
     'isEditing' => false,
     'isDataDeleted' => false,
@@ -32,7 +32,7 @@ state([
 
 mount(function (int $id) {
     try {
-        $this->lowongan_magang = LowonganMagang::findOrFail($id);
+        $this->lowongan_magang = LowonganMagang::with('perusahaan')->findOrFail($id);
         $this->deskripsi = $this->lowongan_magang->deskripsi;
         $this->persyaratan = $this->lowongan_magang->persyaratan;
         $this->kuota = $this->lowongan_magang->kuota;
@@ -44,6 +44,10 @@ mount(function (int $id) {
         $this->perusahaan_id = $this->lowongan_magang->perusahaan_id;
         $this->jumlah_mhs_magang = $this->lowongan_magang->kontrak_magang()->count();
         $this->sisa_kuota = $this->kuota - $this->jumlah_mhs_magang;
+
+        $this->perusahaan_list = Perusahaan::select('id', 'nama')->get()->toArray();
+        $this->pekerjaan_list = Pekerjaan::select('id', 'nama')->get()->toArray();
+        $this->lokasi_list = LokasiMagang::select('id', 'lokasi')->get()->toArray();
     } catch (ModelNotFoundException $error) {
         $this->isDataFound = false;
     }

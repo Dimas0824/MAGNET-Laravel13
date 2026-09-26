@@ -6,18 +6,20 @@ use Carbon\Carbon;
 
 layout('components.layouts.user.main');
 
-// Latest final_rank per lowongan per minute, computed portably in PHP.
-$riwayatAlternative = computed(function () {
+$riwayatMaxRows = 200;
+
+$riwayatAlternative = computed(function () use ($riwayatMaxRows) {
     $mahasiswaId = auth('mahasiswa')->user()->id;
 
-    $recommendations = FinalRankRecommendation::where('mahasiswa_id', $mahasiswaId)
+    $recommendations = FinalRankRecommendation::query()
+        ->where('mahasiswa_id', $mahasiswaId)
+        ->latestPerLowongan()
         ->with(['lowonganMagang.perusahaan.bidangIndustri', 'lowonganMagang.pekerjaan'])
         ->orderByDesc('created_at')
+        ->limit($riwayatMaxRows)
         ->get();
 
     return $recommendations
-        // Keep only the newest row per lowongan per minute.
-        ->unique(fn ($row) => $row->lowongan_magang_id.'-'.$row->created_at->format('Y-m-d H:i'))
         ->map(function ($row) {
             $created = Carbon::parse($row->created_at);
             $hour = (int) $created->format('G');
@@ -40,20 +42,24 @@ $riwayatAlternative = computed(function () {
 $statistikRekomendasi = computed(function () {
     $mahasiswaId = auth('mahasiswa')->user()->id;
 
-    $uniqueRecommendations = FinalRankRecommendation::where('mahasiswa_id', $mahasiswaId)
-        ->orderByDesc('created_at')
-        ->get()
-        ->unique(fn ($row) => $row->lowongan_magang_id.'-'.$row->created_at->format('Y-m-d H:i'));
+    $base = FinalRankRecommendation::query()
+        ->where('mahasiswa_id', $mahasiswaId)
+        ->latestPerLowongan();
+
+    $totalRekomendasi = (clone $base)->count();
+    $rekomendasiTerbaik = (clone $base)->min('rank');
+    $rataRataRank = (clone $base)->avg('avg_rank');
+
+    $perusahaanUnik = (clone $base)
+        ->join('lowongan_magang', 'final_rank_recommendation.lowongan_magang_id', '=', 'lowongan_magang.id')
+        ->distinct()
+        ->count('lowongan_magang.perusahaan_id');
 
     return [
-        'total_rekomendasi' => $uniqueRecommendations->count(),
-        'rekomendasi_terbaik' => $uniqueRecommendations->min('rank'),
-        'rata_rata_rank' => round((float) $uniqueRecommendations->avg('avg_rank'), 1),
-        'perusahaan_unik' => $uniqueRecommendations
-            ->map(fn ($row) => $row->lowonganMagang?->perusahaan_id)
-            ->filter()
-            ->unique()
-            ->count(),
+        'total_rekomendasi' => $totalRekomendasi,
+        'rekomendasi_terbaik' => $rekomendasiTerbaik,
+        'rata_rata_rank' => $rataRataRank !== null ? round((float) $rataRataRank, 1) : 0.0,
+        'perusahaan_unik' => $perusahaanUnik,
     ];
 });
 

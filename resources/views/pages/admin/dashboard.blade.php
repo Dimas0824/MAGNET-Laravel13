@@ -3,11 +3,17 @@
 use function Livewire\Volt\{state};
 use App\Models\{FormPengajuanMagang, KontrakMagang, BidangIndustri};
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+
+$statusCounts = FormPengajuanMagang::query()
+    ->select('status', DB::raw('COUNT(*) as total'))
+    ->groupBy('status')
+    ->pluck('total', 'status');
 
 state([
-    'totalPengajuanMasuk' => FormPengajuanMagang::where('status', 'diproses')->count(),
-    'totalPengajuanDiterima' => FormPengajuanMagang::where('status', 'diterima')->count(),
-    'totalPengajuanDitolak' => FormPengajuanMagang::where('status', 'ditolak')->count(),
+    'totalPengajuanMasuk' => (int) ($statusCounts['diproses'] ?? 0),
+    'totalPengajuanDiterima' => (int) ($statusCounts['diterima'] ?? 0),
+    'totalPengajuanDitolak' => (int) ($statusCounts['ditolak'] ?? 0),
 
     'totalKontrakMagangTahunIni' => KontrakMagang::whereYear('created_at', Carbon::now()->year)->count(),
 

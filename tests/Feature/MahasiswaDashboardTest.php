@@ -62,7 +62,7 @@ it('runs a bounded number of queries for the recommendations', function () {
     DB::disableQueryLog();
 
     // A handful of queries (recommendations + preferences + lookups), not N+1.
-    expect($queryCount)->toBeLessThanOrEqual(20);
+    expect($queryCount)->toBeLessThanOrEqual(14);
 });
 
 it('does not reference the dropped lowongan_magang.nama column', function () {
@@ -76,4 +76,19 @@ it('does not reference the dropped lowongan_magang.nama column', function () {
     DB::disableQueryLog();
 
     expect($queries)->not->toContain('lowongan_magang`.`nama`');
+});
+
+it('resolves the preference labels from their lookup tables', function () {
+    $mahasiswa = mahasiswaDenganPreferensi();
+    seedRecommendations($mahasiswa, 2);
+    actingAsMahasiswa($mahasiswa);
+
+    $response = $this->get(route('dashboard'));
+    $response->assertOk();
+
+    // mahasiswaDenganPreferensi picks Software Engineer / Teknologi / paid
+    // internship, all of which must still surface as resolved labels.
+    $response->assertSee('Software Engineer', false);
+    $response->assertSee('Teknologi', false);
+    $response->assertSee('berbayar', false);
 });

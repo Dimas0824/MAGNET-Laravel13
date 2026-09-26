@@ -16,6 +16,8 @@ class DataPreprocessing
      */
     public static function dataCategorization(LowonganMagang $lowonganMagang): void
     {
+        $lowonganMagang->loadMissing(['pekerjaan', 'lokasiMagang', 'perusahaan.bidangIndustri']);
+
         $alternative = [
             'id' => $lowonganMagang->id,
             'pekerjaan' => $lowonganMagang->pekerjaan->nama,
@@ -59,6 +61,14 @@ class DataPreprocessing
      */
     public static function dataEncoding(Mahasiswa $mahasiswa): void
     {
+        $mahasiswa->loadMissing([
+            'kriteriaPekerjaan.pekerjaan',
+            'kriteriaBidangIndustri.bidangIndustri',
+            'kriteriaJenisMagang',
+            'kriteriaLokasiMagang.lokasiMagang',
+            'kriteriaOpenRemote',
+        ]);
+
         $preference = [
             'pekerjaan' => $mahasiswa->kriteriaPekerjaan->pekerjaan->nama,
             'bidang_industri' => $mahasiswa->kriteriaBidangIndustri->bidangIndustri->nama,
