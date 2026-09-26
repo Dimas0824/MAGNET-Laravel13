@@ -21,6 +21,14 @@ class VectorNormalization extends Model
         'lokasi_magang',
     ];
 
+    protected $casts = [
+        'pekerjaan' => 'decimal:6',
+        'open_remote' => 'decimal:6',
+        'jenis_magang' => 'decimal:6',
+        'bidang_industri' => 'decimal:6',
+        'lokasi_magang' => 'decimal:6',
+    ];
+
     public function mahasiswa()
     {
         return $this->belongsTo(Mahasiswa::class, 'mahasiswa_id');

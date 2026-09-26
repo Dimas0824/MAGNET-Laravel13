@@ -22,6 +22,14 @@ class EncodedAlternatives extends Model
         'lokasi_magang',
     ];
 
+    protected $casts = [
+        'pekerjaan' => 'integer',
+        'open_remote' => 'integer',
+        'jenis_magang' => 'integer',
+        'bidang_industri' => 'integer',
+        'lokasi_magang' => 'integer',
+    ];
+
     // Define relationships
     public function mahasiswa()
     {

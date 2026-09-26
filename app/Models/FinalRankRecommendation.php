@@ -20,6 +20,10 @@ class FinalRankRecommendation extends Model
         'fmf_id',
     ];
 
+    protected $casts = [
+        'avg_rank' => 'decimal:6',
+    ];
+
     public function mahasiswa()
     {
         return $this->belongsTo(Mahasiswa::class, 'mahasiswa_id');

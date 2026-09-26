@@ -17,6 +17,10 @@ class RatioSystem extends Model
         'lowongan_magang_id',
     ];
 
+    protected $casts = [
+        'score' => 'decimal:6',
+    ];
+
     public function mahasiswa()
     {
         return $this->belongsTo(Mahasiswa::class, 'mahasiswa_id');
