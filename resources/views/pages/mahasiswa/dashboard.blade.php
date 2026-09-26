@@ -49,7 +49,7 @@ mount(function () {
                 'lowongan_id' => $item->lowongan_magang_id,
                 'pekerjaan' => $lowonganMagang->pekerjaan->nama ?? '',
                 'bidang_industri' => $perusahaan->bidangIndustri->nama ?? '',
-                'lokasi' => $this->categorizeLocation($perusahaan->lokasi ?? ''),
+                'lokasi' => $lowonganMagang->lokasiMagang->kategori_lokasi ?? 'Tidak Diketahui',
                 'jenis_magang' => $lowonganMagang->jenis_magang ?? '',
                 'open_remote' => $lowonganMagang->open_remote ?? '',
                 'nama_perusahaan' => $perusahaan->nama ?? '',
@@ -61,46 +61,6 @@ mount(function () {
     // Load user preferences
     $this->preferences_data = $this->loadUserPreferences($userId);
 });
-
-// Simplified location categorization
-$categorizeLocation = function ($lokasi) {
-    if (empty($lokasi)) {
-        return 'Tidak Diketahui';
-    }
-
-    $lokasi = strtolower(trim($lokasi));
-
-    // Remote work
-    if (strpos($lokasi, 'remote') !== false || strpos($lokasi, 'wfh') !== false) {
-        return 'Remote';
-    }
-
-    // Malang area
-    $malangAreas = ['malang', 'batu'];
-    foreach ($malangAreas as $area) {
-        if (strpos($lokasi, $area) !== false) {
-            return 'Area Malang Raya';
-        }
-    }
-
-    // International
-    $international = ['singapore', 'malaysia', 'japan', 'korea', 'usa', 'australia'];
-    foreach ($international as $country) {
-        if (strpos($lokasi, $country) !== false) {
-            return 'Luar Negeri';
-        }
-    }
-
-    // East Java cities
-    $eastJavaCities = ['surabaya', 'sidoarjo', 'kediri', 'blitar', 'jember'];
-    foreach ($eastJavaCities as $city) {
-        if (strpos($lokasi, $city) !== false) {
-            return 'Luar Area Malang (Jawa Timur)';
-        }
-    }
-
-    return 'Luar Provinsi Jawa Timur';
-};
 
 // Load user preferences
 $loadUserPreferences = function ($userId) {
@@ -178,7 +138,9 @@ $loadUserPreferences = function ($userId) {
     if (isset($preferences['lokasi_magang_id'])) {
         $original = $lokasiKategori[$preferences['lokasi_magang_id']] ?? null;
         if ($original !== null) {
-            $resolved['lokasi'] = $this->isAllPreference($original) ? $original : $this->categorizeLocation($original);
+            // `kategori_lokasi` is already the normalized category; no more
+            // string matching against free text is needed.
+            $resolved['lokasi'] = $original;
         }
     }
 
