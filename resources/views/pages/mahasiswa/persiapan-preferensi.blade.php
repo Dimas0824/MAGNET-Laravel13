@@ -3,6 +3,7 @@
 use App\Events\MahasiswaPreferenceUpdated;
 use App\Helpers\DecisionMaking\ROC;
 use App\Models\BidangIndustri;
+use App\Models\BaseKriteriaModel;
 use App\Models\KriteriaBidangIndustri;
 use App\Models\KriteriaJenisMagang;
 use App\Models\KriteriaLokasiMagang;
@@ -74,40 +75,53 @@ $storePreferensiMahasiswa = function () {
         DB::transaction(function () use ($totalCriteria) {
             $mhs_id = auth('mahasiswa')->user()->id;
 
-            KriteriaPekerjaan::forceCreate([
-                'pekerjaan_id' => $this->pekerjaan,
-                'mahasiswa_id' => $mhs_id,
-                'rank' => $this->pekerjaan_rank,
-                'bobot' => ROC::getWeight($this->pekerjaan_rank, $totalCriteria),
-            ]);
+            // Upsert keyed on mahasiswa_id: re-running the wizard updates the
+            // existing criteria rows instead of inserting a second set (the
+            // tables are unique on mahasiswa_id). Uses firstOrNew + forceFill
+            // because rank/bobot are intentionally NOT mass-assignable, so
+            // updateOrCreate() would silently drop them. Wrapped in
+            // withoutEvents() so the five model `updated` events do not each
+            // re-run the pipeline — it is dispatched exactly once, below.
+            $write = function () use ($mhs_id, $totalCriteria) {
+                KriteriaPekerjaan::firstOrNew(['mahasiswa_id' => $mhs_id])
+                    ->forceFill([
+                        'pekerjaan_id' => $this->pekerjaan,
+                        'rank' => $this->pekerjaan_rank,
+                        'bobot' => ROC::getWeight($this->pekerjaan_rank, $totalCriteria),
+                    ])->save();
 
-            KriteriaBidangIndustri::forceCreate([
-                'bidang_industri_id' => $this->bidang_industri,
-                'mahasiswa_id' => $mhs_id,
-                'rank' => $this->bidang_industri_rank,
-                'bobot' => ROC::getWeight($this->bidang_industri_rank, $totalCriteria),
-            ]);
+                KriteriaBidangIndustri::firstOrNew(['mahasiswa_id' => $mhs_id])
+                    ->forceFill([
+                        'bidang_industri_id' => $this->bidang_industri,
+                        'rank' => $this->bidang_industri_rank,
+                        'bobot' => ROC::getWeight($this->bidang_industri_rank, $totalCriteria),
+                    ])->save();
 
-            KriteriaLokasiMagang::forceCreate([
-                'lokasi_magang_id' => $this->lokasi_magang,
-                'mahasiswa_id' => $mhs_id,
-                'rank' => $this->lokasi_magang_rank,
-                'bobot' => ROC::getWeight($this->lokasi_magang_rank, $totalCriteria),
-            ]);
+                KriteriaLokasiMagang::firstOrNew(['mahasiswa_id' => $mhs_id])
+                    ->forceFill([
+                        'lokasi_magang_id' => $this->lokasi_magang,
+                        'rank' => $this->lokasi_magang_rank,
+                        'bobot' => ROC::getWeight($this->lokasi_magang_rank, $totalCriteria),
+                    ])->save();
 
-            KriteriaJenisMagang::forceCreate([
-                'jenis_magang' => $this->jenis_magang,
-                'mahasiswa_id' => $mhs_id,
-                'rank' => $this->jenis_magang_rank,
-                'bobot' => ROC::getWeight($this->jenis_magang_rank, $totalCriteria),
-            ]);
+                KriteriaJenisMagang::firstOrNew(['mahasiswa_id' => $mhs_id])
+                    ->forceFill([
+                        'jenis_magang' => $this->jenis_magang,
+                        'rank' => $this->jenis_magang_rank,
+                        'bobot' => ROC::getWeight($this->jenis_magang_rank, $totalCriteria),
+                    ])->save();
 
-            KriteriaOpenRemote::forceCreate([
-                'open_remote' => $this->open_remote,
-                'mahasiswa_id' => $mhs_id,
-                'rank' => $this->open_remote_rank,
-                'bobot' => ROC::getWeight($this->open_remote_rank, $totalCriteria),
-            ]);
+                KriteriaOpenRemote::firstOrNew(['mahasiswa_id' => $mhs_id])
+                    ->forceFill([
+                        'open_remote' => $this->open_remote,
+                        'rank' => $this->open_remote_rank,
+                        'bobot' => ROC::getWeight($this->open_remote_rank, $totalCriteria),
+                    ])->save();
+            };
+
+            // Suppress BaseKriteriaModel::updated() so the pipeline is not
+            // triggered five times; it is dispatched once below.
+            BaseKriteriaModel::withoutEvents($write);
 
             $mahasiswa = Mahasiswa::find(auth('mahasiswa')->user()->id);
 

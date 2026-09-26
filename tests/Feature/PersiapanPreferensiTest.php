@@ -23,9 +23,9 @@ beforeEach(function () {
  * Drive the multi-step preference wizard straight to its final step so
  * storePreferensiMahasiswa() runs, then return the persisted criteria rows.
  */
-function submitPreferensi(Mahasiswa $mahasiswa): void
+function submitPreferensi(Mahasiswa $mahasiswa): \Livewire\Features\SupportTesting\Testable
 {
-    Volt::test('pages.mahasiswa.persiapan-preferensi')
+    return Volt::test('pages.mahasiswa.persiapan-preferensi')
         ->set('pekerjaan', Pekerjaan::where('nama', 'Software Engineer')->value('id'))
         ->set('bidang_industri', BidangIndustri::where('nama', 'Teknologi')->value('id'))
         ->set('lokasi_magang', LokasiMagang::where('kategori_lokasi', 'Area Malang Raya')->value('id'))
@@ -66,4 +66,29 @@ it('stores preference weights using the configured roc total_criteria', function
         ->and((float) $lokasi->bobot)->toEqualWithDelta(ROC::getWeight(3, $total), 1e-12)
         ->and((float) $jenis->bobot)->toEqualWithDelta(ROC::getWeight(4, $total), 1e-12)
         ->and((float) $remote->bobot)->toEqualWithDelta(ROC::getWeight(5, $total), 1e-12);
+});
+
+it('is idempotent: submitting preferences twice keeps one criteria row per table', function () {
+    $mahasiswa = Mahasiswa::factory()->create();
+    $this->actingAs($mahasiswa, 'mahasiswa');
+
+    DataPreprocessing::dataCategorization(lowonganMagang());
+
+    // First submission creates the five criteria rows.
+    submitPreferensi($mahasiswa);
+
+    // Second submission (user re-runs the wizard) must UPDATE the existing rows,
+    // not insert a duplicate set and not silently fail on the unique index.
+    $component = submitPreferensi($mahasiswa);
+
+    $component->assertHasNoErrors();
+
+    // The wizard flashes the outcome; a swallowed failure would flash 'failed'.
+    expect(session('status'))->not->toBe('failed');
+
+    expect(KriteriaPekerjaan::where('mahasiswa_id', $mahasiswa->id)->count())->toBe(1)
+        ->and(KriteriaBidangIndustri::where('mahasiswa_id', $mahasiswa->id)->count())->toBe(1)
+        ->and(KriteriaLokasiMagang::where('mahasiswa_id', $mahasiswa->id)->count())->toBe(1)
+        ->and(KriteriaJenisMagang::where('mahasiswa_id', $mahasiswa->id)->count())->toBe(1)
+        ->and(KriteriaOpenRemote::where('mahasiswa_id', $mahasiswa->id)->count())->toBe(1);
 });
