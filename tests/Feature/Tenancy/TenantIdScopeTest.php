@@ -41,7 +41,7 @@ it('adds tenant_id to exactly the 12 root tables', function () {
     expect($tablesWithTenantId)->toBe($expected);
 });
 
-it('keeps tenant_id nullable during the expand phase', function () {
+it('makes tenant_id NOT NULL on every root table after the contract', function () {
     foreach (TENANT_ROOT_TABLES as $table) {
         $nullable = DB::table('information_schema.columns')
             ->where('table_schema', DB::connection()->getDatabaseName())
@@ -49,6 +49,6 @@ it('keeps tenant_id nullable during the expand phase', function () {
             ->where('column_name', 'tenant_id')
             ->value('is_nullable');
 
-        expect($nullable)->toBe('YES', "{$table}.tenant_id should be nullable in expand phase");
+        expect($nullable)->toBe('NO', "{$table}.tenant_id should be NOT NULL after the P1-T7 contract");
     }
 });
