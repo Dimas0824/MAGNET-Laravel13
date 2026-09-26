@@ -11,6 +11,8 @@ class Mahasiswa extends UserBase
     protected $table = 'mahasiswa';
 
     protected $fillable = [
+        'tenant_id',
+        'user_id',
         'nama',
         'nim',
         'email',
@@ -34,6 +36,14 @@ class Mahasiswa extends UserBase
     public function getRoleName(): string
     {
         return 'mahasiswa';
+    }
+
+    /**
+     * The registry identity backing this mahasiswa row.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 
     public function berkasPengajuanMagang()

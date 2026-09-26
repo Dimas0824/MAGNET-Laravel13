@@ -83,12 +83,12 @@ it('cascades logs, ulasan, umpan balik and chats under a kontrak', function () {
         'tanggal' => now()->toDateString(),
     ]);
 
+    linkKontrakParticipantsToRegistry($kontrak);
+
     Chat::create([
         'kontrak_magang_id' => $kontrak->id,
-        'sender_id' => $kontrak->mahasiswa_id,
-        'sender_type' => Chat::SENDER_MAHASISWA,
-        'receiver_id' => $kontrak->dosen_id,
-        'receiver_type' => Chat::SENDER_DOSEN,
+        'sender_user_id' => $kontrak->mahasiswa->user_id,
+        'receiver_user_id' => $kontrak->dosenPembimbing->user_id,
         'message' => 'Halo',
     ]);
 
@@ -126,12 +126,12 @@ it('hides the password attribute on serialization', function () {
 it('identifies chat sender as mahasiswa when sender_id matches the kontrak', function () {
     $kontrak = KontrakMagang::factory()->create();
 
+    linkKontrakParticipantsToRegistry($kontrak);
+
     $chat = Chat::create([
         'kontrak_magang_id' => $kontrak->id,
-        'sender_id' => $kontrak->mahasiswa_id,
-        'sender_type' => Chat::SENDER_MAHASISWA,
-        'receiver_id' => $kontrak->dosen_id,
-        'receiver_type' => Chat::SENDER_DOSEN,
+        'sender_user_id' => $kontrak->mahasiswa->user_id,
+        'receiver_user_id' => $kontrak->dosenPembimbing->user_id,
         'message' => 'Hi',
     ]);
 

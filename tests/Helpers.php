@@ -60,8 +60,7 @@ function seedMasterData(): void
 /**
  * Build a lengkap mahasiswa with the 5 criterion preferences set.
  * Returns the persisted model.
- */
-function mahasiswaDenganPreferensi(array $overrides = []): Mahasiswa
+ */function mahasiswaDenganPreferensi(array $overrides = []): Mahasiswa
 {
     seedMasterData();
 
@@ -132,4 +131,22 @@ function lowonganMagang(array $overrides = []): LowonganMagang
         'lokasi_magang_id' => LokasiMagang::where('kategori_lokasi', 'Area Malang Raya')->value('id'),
         'perusahaan_id' => $perusahaan->id,
     ], $overrides)));
+}
+
+/**
+ * Link the kontrak's mahasiswa + dosen into the users registry and stamp their
+ * `user_id`, so chat fixtures can reference the registry FKs.
+ *
+ * RefreshDatabase migrates once before the test transaction, so the registry
+ * backfill (which runs inside that migration) saw an empty DB; re-run it here
+ * against the rows the test just created.
+ */
+function linkKontrakParticipantsToRegistry(\App\Models\KontrakMagang $kontrak): void
+{
+    (new \Database\Seeders\TenantBackfillSeeder)->run();
+    (require database_path('migrations/2026_09_27_000600_backfill_users_registry.php'))->up();
+    (require database_path('migrations/2026_09_27_000800_backfill_user_id_on_auth_tables.php'))->up();
+
+    $kontrak->mahasiswa?->refresh();
+    $kontrak->dosenPembimbing?->refresh();
 }

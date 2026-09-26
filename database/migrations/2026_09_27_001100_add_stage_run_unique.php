@@ -54,6 +54,13 @@ return new class extends Migration
                 continue;
             }
 
+            // The unique (run_id, lowongan_magang_id) also backs the run_id FK,
+            // so MySQL refuses to drop it while the FK needs an index. Give the
+            // FK a plain run_id index first, then drop the unique.
+            Schema::table($table, function (Blueprint $blueprint) use ($table) {
+                $blueprint->index('run_id', "{$table}_run_id_index");
+            });
+
             Schema::table($table, function (Blueprint $blueprint) use ($table) {
                 $blueprint->dropUnique("{$table}_run_id_lowongan_unique");
             });

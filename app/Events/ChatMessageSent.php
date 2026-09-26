@@ -39,10 +39,8 @@ class ChatMessageSent implements ShouldBroadcast
         return [
             'id' => $this->chat->id,
             'kontrak_magang_id' => $this->chat->kontrak_magang_id,
-            'sender_id' => $this->chat->sender_id,
-            'sender_type' => $this->chat->sender_type,
-            'receiver_id' => $this->chat->receiver_id,
-            'receiver_type' => $this->chat->receiver_type,
+            'sender_user_id' => $this->chat->sender_user_id,
+            'receiver_user_id' => $this->chat->receiver_user_id,
             'message' => $this->chat->message,
             'created_at' => $this->chat->created_at?->toIso8601String(),
         ];

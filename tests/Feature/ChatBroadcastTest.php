@@ -16,12 +16,16 @@ beforeEach(function () {
 it('broadcasts ChatMessageSent on the private chat channel', function () {
     $kontrak = KontrakMagang::factory()->create();
 
+    (new \Database\Seeders\TenantBackfillSeeder)->run();
+    (require database_path('migrations/2026_09_27_000600_backfill_users_registry.php'))->up();
+    (require database_path('migrations/2026_09_27_000800_backfill_user_id_on_auth_tables.php'))->up();
+    $kontrak->mahasiswa->refresh();
+    $kontrak->dosenPembimbing->refresh();
+
     $chat = Chat::create([
         'kontrak_magang_id' => $kontrak->id,
-        'sender_id' => $kontrak->mahasiswa_id,
-        'sender_type' => Chat::SENDER_MAHASISWA,
-        'receiver_id' => $kontrak->dosen_id,
-        'receiver_type' => Chat::SENDER_DOSEN,
+        'sender_user_id' => $kontrak->mahasiswa->user_id,
+        'receiver_user_id' => $kontrak->dosenPembimbing->user_id,
         'message' => 'Halo',
     ]);
 
@@ -39,10 +43,8 @@ it('broadcasts ChatMessageSent on the private chat channel', function () {
         ->toMatchArray([
             'id' => $chat->id,
             'kontrak_magang_id' => $kontrak->id,
-            'sender_id' => $kontrak->mahasiswa_id,
-            'sender_type' => Chat::SENDER_MAHASISWA,
-            'receiver_id' => $kontrak->dosen_id,
-            'receiver_type' => Chat::SENDER_DOSEN,
+            'sender_user_id' => $kontrak->mahasiswa->user_id,
+            'receiver_user_id' => $kontrak->dosenPembimbing->user_id,
             'message' => 'Halo',
         ]);
 });

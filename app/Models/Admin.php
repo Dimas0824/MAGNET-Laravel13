@@ -11,6 +11,8 @@ class Admin extends UserBase
     protected $table = 'admin';
 
     protected $fillable = [
+        'tenant_id',
+        'user_id',
         'nama',
         'nip',
     ];
@@ -22,5 +24,13 @@ class Admin extends UserBase
     public function getRoleName(): string
     {
         return 'admin';
+    }
+
+    /**
+     * The registry identity backing this admin row.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

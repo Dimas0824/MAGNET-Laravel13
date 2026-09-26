@@ -23,23 +23,23 @@ function chatFixture(): array
     }
     $kontrak->update(['dosen_id' => $dosen->id]);
     $kontrak->refresh();
-    $dosenId = $kontrak->dosen_id;
+
+    linkKontrakParticipantsToRegistry($kontrak);
+
+    $mahasiswaUser = $kontrak->mahasiswa->user_id;
+    $dosenUser = $kontrak->dosenPembimbing->user_id;
 
     $dariMahasiswa = Chat::create([
         'kontrak_magang_id' => $kontrak->id,
-        'sender_id' => $kontrak->mahasiswa_id,
-        'sender_type' => Chat::SENDER_MAHASISWA,
-        'receiver_id' => $dosenId,
-        'receiver_type' => Chat::SENDER_DOSEN,
+        'sender_user_id' => $mahasiswaUser,
+        'receiver_user_id' => $dosenUser,
         'message' => 'Halo dosen',
     ]);
 
     $dariDosen = Chat::create([
         'kontrak_magang_id' => $kontrak->id,
-        'sender_id' => $dosenId,
-        'sender_type' => Chat::SENDER_DOSEN,
-        'receiver_id' => $kontrak->mahasiswa_id,
-        'receiver_type' => Chat::SENDER_MAHASISWA,
+        'sender_user_id' => $dosenUser,
+        'receiver_user_id' => $mahasiswaUser,
         'message' => 'Halo mahasiswa',
     ]);
 
@@ -49,8 +49,8 @@ function chatFixture(): array
 it('resolves the sender and receiver for a mahasiswa message', function () {
     [$kontrak, $chat] = chatFixture();
 
-    expect($chat->sender->id)->toBe($kontrak->mahasiswa_id)
-        ->and($chat->receiver->id)->toBe($kontrak->dosen_id)
+    expect($chat->sender->id)->toBe($kontrak->mahasiswa->user_id)
+        ->and($chat->receiver->id)->toBe($kontrak->dosenPembimbing->user_id)
         ->and($chat->isSentByMahasiswa())->toBeTrue()
         ->and($chat->isSentByDosen())->toBeFalse();
 });
@@ -58,8 +58,8 @@ it('resolves the sender and receiver for a mahasiswa message', function () {
 it('resolves the sender and receiver for a dosen message', function () {
     [$kontrak, , $chat] = chatFixture();
 
-    expect($chat->sender->id)->toBe($kontrak->dosen_id)
-        ->and($chat->receiver->id)->toBe($kontrak->mahasiswa_id)
+    expect($chat->sender->id)->toBe($kontrak->dosenPembimbing->user_id)
+        ->and($chat->receiver->id)->toBe($kontrak->mahasiswa->user_id)
         ->and($chat->isSentByDosen())->toBeTrue()
         ->and($chat->isSentByMahasiswa())->toBeFalse();
 });
@@ -67,7 +67,11 @@ it('resolves the sender and receiver for a dosen message', function () {
 it('scopes messages between two users', function () {
     [$kontrak] = chatFixture();
 
-    $between = Chat::betweenUsers($kontrak->mahasiswa_id, $kontrak->dosen_id, $kontrak->id)->count();
+    $between = Chat::betweenUsers(
+        $kontrak->mahasiswa->user_id,
+        $kontrak->dosenPembimbing->user_id,
+        $kontrak->id
+    )->count();
 
     expect($between)->toBe(2);
 });
@@ -81,16 +85,14 @@ it('scopes messages by kontrak', function () {
 it('returns null sender/receiver when the kontrak is missing', function () {
     $chat = new Chat([
         'kontrak_magang_id' => 999999,
-        'sender_id' => 1,
-        'sender_type' => Chat::SENDER_MAHASISWA,
-        'receiver_id' => 2,
-        'receiver_type' => Chat::SENDER_DOSEN,
+        'sender_user_id' => 1,
+        'receiver_user_id' => 2,
         'message' => 'orphan',
     ]);
 
     expect($chat->sender)->toBeNull()
         ->and($chat->receiver)->toBeNull()
-        ->and($chat->isSentByMahasiswa())->toBeTrue()
+        ->and($chat->isSentByMahasiswa())->toBeFalse()
         ->and($chat->isSentByDosen())->toBeFalse();
 });
 
@@ -131,21 +133,20 @@ it('resolves roles correctly when mahasiswa and dosen share the same id (regress
         'status' => 'disetujui',
     ]);
 
+    // Link both identities into the registry so the chat FKs can resolve.
+    linkKontrakParticipantsToRegistry($kontrak);
+
     $fromMhs = Chat::create([
         'kontrak_magang_id' => $kontrak->id,
-        'sender_id' => $mahasiswa->id,
-        'sender_type' => Chat::SENDER_MAHASISWA,
-        'receiver_id' => $dosen->id,
-        'receiver_type' => Chat::SENDER_DOSEN,
+        'sender_user_id' => $kontrak->mahasiswa->user_id,
+        'receiver_user_id' => $kontrak->dosenPembimbing->user_id,
         'message' => 'dari mahasiswa',
     ]);
 
     $fromDosen = Chat::create([
         'kontrak_magang_id' => $kontrak->id,
-        'sender_id' => $dosen->id,
-        'sender_type' => Chat::SENDER_DOSEN,
-        'receiver_id' => $mahasiswa->id,
-        'receiver_type' => Chat::SENDER_MAHASISWA,
+        'sender_user_id' => $kontrak->dosenPembimbing->user_id,
+        'receiver_user_id' => $kontrak->mahasiswa->user_id,
         'message' => 'dari dosen',
     ]);
 
