@@ -106,10 +106,10 @@ it('stores final_rank FK ids that point to the SAME lowongan as the row', functi
     }
 });
 
-it('is idempotent-safe: rerunning appends a fresh consistent snapshot', function () {
+it('is idempotent: rerunning with identical inputs replaces the run snapshot', function () {
     [$mahasiswa] = runPipeline(3);
 
-    // Second run for the same mahasiswa.
+    // Second run for the same mahasiswa with the SAME encoded inputs.
     DataPreprocessing::dataEncoding($mahasiswa);
     (new MultiMOORA($mahasiswa))->computeMultiMOORA();
 
@@ -117,7 +117,9 @@ it('is idempotent-safe: rerunning appends a fresh consistent snapshot', function
         ->where('mahasiswa_id', $mahasiswa->id)
         ->get();
 
-    expect($finals)->toHaveCount(6); // 3 openings x 2 runs
+    // Same inputs => same recommendation_run => the snapshot is replaced, not
+    // appended: 3 openings, one run (previously this appended a 2nd set of 3).
+    expect($finals)->toHaveCount(3);
 
     foreach ($finals as $final) {
         expect($final->ratioSystem->lowongan_magang_id)->toBe($final->lowongan_magang_id)
