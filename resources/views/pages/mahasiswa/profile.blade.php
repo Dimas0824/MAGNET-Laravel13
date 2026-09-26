@@ -77,6 +77,14 @@ state([
 mount(function () {
     $this->mahasiswa = auth('mahasiswa')->user();
 
+    $this->mahasiswa->loadMissing([
+        'kriteriaPekerjaan.pekerjaan',
+        'kriteriaBidangIndustri.bidangIndustri',
+        'kriteriaLokasiMagang.lokasiMagang',
+        'kriteriaJenisMagang',
+        'kriteriaOpenRemote',
+    ]);
+
     // Load personal data
     $this->nama = $this->mahasiswa->nama;
     $this->nim = $this->mahasiswa->nim;

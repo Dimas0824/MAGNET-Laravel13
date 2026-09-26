@@ -32,7 +32,7 @@ mount(function () {
     if ($this->mahasiswa) {
         // Query kontrak magang dengan relasi
         $this->kontrak_magang = KontrakMagang::where('mahasiswa_id', $this->mahasiswa->id)
-            ->with(['lowonganMagang.perusahaan', 'lowonganMagang'])
+            ->with(['lowonganMagang.perusahaan', 'lowonganMagang.pekerjaan'])
             ->latest()
             ->first();
 
