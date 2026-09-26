@@ -23,6 +23,28 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureRateLimiting();
+        $this->removeFrameworkDefaultIdentityProvider();
+    }
+
+    /**
+     * The `users` registry is a normal model, NEVER an auth provider (ADR 03):
+     * the app keeps its 3 guards/providers (mahasiswa/dosen/admin, in
+     * config/auth.php). Laravel still deep-merges the framework's default
+     * `web` guard + `users` provider into auth config, which would make the
+     * registry a login path — strip both so the registry cannot be used to
+     * authenticate.
+     */
+    protected function removeFrameworkDefaultIdentityProvider(): void
+    {
+        $guards = config('auth.guards', []);
+        $providers = config('auth.providers', []);
+
+        unset($guards['web'], $providers['users']);
+
+        config([
+            'auth.guards' => $guards,
+            'auth.providers' => $providers,
+        ]);
     }
 
     /**
