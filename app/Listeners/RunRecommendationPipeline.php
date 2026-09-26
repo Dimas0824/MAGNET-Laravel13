@@ -5,6 +5,8 @@ namespace App\Listeners;
 use App\Events\MahasiswaPreferenceUpdated;
 use App\Helpers\DecisionMaking\DataPreprocessing;
 use App\Helpers\DecisionMaking\MultiMOORA;
+use App\Models\Concerns\BelongsToTenant;
+use App\Models\Tenant;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
@@ -48,8 +50,29 @@ class RunRecommendationPipeline implements ShouldQueue
      */
     public function handle(MahasiswaPreferenceUpdated $event): void
     {
+        $this->restoreTenant($event);
+
         DataPreprocessing::dataEncoding($event->mahasiswa);
 
         (new MultiMOORA($event->mahasiswa))->computeMultiMOORA();
+    }
+
+    /**
+     * Re-bind the tenant this job was queued under. On a worker there is no
+     * request, so the scope would otherwise fall back to the default tenant and
+     * a non-default tenant's job would (strict scope) see none of its own rows.
+     */
+    public function restoreTenant(MahasiswaPreferenceUpdated $event): void
+    {
+        if ($event->tenantId === null || app()->bound('currentTenant')) {
+            return;
+        }
+
+        $tenant = Tenant::query()->find($event->tenantId);
+
+        if ($tenant !== null) {
+            app()->instance('currentTenant', $tenant);
+            app()->instance('resolvedDefaultTenant', $tenant);
+        }
     }
 }
