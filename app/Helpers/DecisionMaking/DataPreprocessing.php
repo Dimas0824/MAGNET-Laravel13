@@ -67,7 +67,24 @@ class DataPreprocessing
             'open_remote' => $mahasiswa->kriteriaOpenRemote->open_remote,
         ];
 
-        $dataCategorized = Storage::json(config('recommendation-system.preprocessing.alternatives_categorized_path'));
+        // Storage::json() returns null when the file has not been written yet
+        // (a fresh install, or before any opening has been categorized). Treat
+        // that as "no alternatives" instead of crashing the pipeline: the
+        // queued RunRecommendationPipeline runs this on every preference
+        // update and previously threw
+        // "array_map(): Argument #2 must be of type array, null given".
+        $dataCategorized = Storage::json(config('recommendation-system.preprocessing.alternatives_categorized_path')) ?? [];
+
+        // Drop entries whose opening no longer exists so the insert below
+        // cannot violate encoded_alternatives.lowongan_magang_id foreign key
+        // (the categorized file persists across resets and can go stale).
+        $existingOpeningIds = LowonganMagang::whereIn('id', array_column($dataCategorized, 'id'))
+            ->pluck('id')
+            ->all();
+        $dataCategorized = array_values(array_filter(
+            $dataCategorized,
+            fn (array $item): bool => in_array($item['id'] ?? null, $existingOpeningIds, true)
+        ));
 
         $now = now();
 
@@ -101,8 +118,15 @@ class DataPreprocessing
             $dataCategorized
         );
 
-        DB::transaction(function () use ($result) {
-            EncodedAlternatives::insert($result);
+        DB::transaction(function () use ($mahasiswa, $result) {
+            // Replace this mahasiswa's encodings instead of appending, so
+            // repeated pipeline runs stay idempotent and never accumulate
+            // stale rows (encoded_alternatives has no unique constraint).
+            EncodedAlternatives::where('mahasiswa_id', $mahasiswa->id)->delete();
+
+            if ($result !== []) {
+                EncodedAlternatives::insert($result);
+            }
         });
     }
 }
