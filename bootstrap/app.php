@@ -6,6 +6,7 @@ use App\Http\Middleware\EncryptCookies;
 use App\Http\Middleware\PreventRequestForgery;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Http\Middleware\ResolveTenant;
 use App\Http\Middleware\TrimStrings;
 use App\Http\Middleware\TrustProxies;
 use App\Http\Middleware\ValidateSignature;
@@ -57,6 +58,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ShareErrorsFromSession::class,
             PreventRequestForgery::class,
             SubstituteBindings::class,
+            ResolveTenant::class,
         ]);
 
         $middleware->group('api', [
