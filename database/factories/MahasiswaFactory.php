@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\Mahasiswa;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -23,6 +24,7 @@ class MahasiswaFactory extends Factory
         $length = $this->faker->randomElement([10, 11]);
 
         return [
+            'tenant_id' => BelongsToTenant::defaultTenantId(),
             'nama' => $this->faker->name(),
             'nim' => (string) $this->faker->unique()->numerify(str_repeat('#', $length)),
             'email' => $this->faker->unique()->safeEmail(),

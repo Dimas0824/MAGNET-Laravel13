@@ -31,9 +31,27 @@ class DemoSeeder extends Seeder
 {
     private string $password = 'password';
 
+    /**
+     * The default tenant id, stamped on every root row the demo creates.
+     * forceCreate() bypasses the BelongsToTenant creating hook, so the seed
+     * must set tenant_id explicitly now that the column is NOT NULL.
+     */
+    private function tenantId(): int
+    {
+        \App\Models\Concerns\BelongsToTenant::forgetResolvedTenant();
+
+        return \App\Models\Concerns\BelongsToTenant::defaultTenantId()
+            ?? \App\Models\Tenant::query()->where('slug', \Database\Seeders\TenantSeeder::DEFAULT_SLUG)->value('id');
+    }
+
     public function run(): void
     {
         $this->resetDemoData();
+
+        // The default tenant must exist before any root row is written: post
+        // P1-T7 `tenant_id` is NOT NULL, and forceCreate() bypasses the trait's
+        // creating hook, so every root insert below stamps it explicitly.
+        $this->call(TenantSeeder::class);
 
         $this->seedMasterData();
         $this->seedAdmins();
@@ -119,6 +137,7 @@ class DemoSeeder extends Seeder
     private function seedAdmins(): void
     {
         Admin::forceCreate([
+            'tenant_id' => $this->tenantId(),
             'nama' => 'Admin MAGNET',
             'nip' => '198501012010011001',
             'password' => Hash::make($this->password),
@@ -128,6 +147,7 @@ class DemoSeeder extends Seeder
     private function seedDosen(): DosenPembimbing
     {
         return DosenPembimbing::forceCreate([
+            'tenant_id' => $this->tenantId(),
             'nama' => 'Dr. Sri Wahyuni, M.Kom.',
             'nidn' => '0012345678',
             'password' => Hash::make($this->password),
@@ -139,6 +159,7 @@ class DemoSeeder extends Seeder
     private function seedMahasiswa(): array
     {
         $aktif = Mahasiswa::forceCreate([
+            'tenant_id' => $this->tenantId(),
             'nama' => 'Budi Santoso',
             'nim' => '24410706001',
             'email' => 'budi@magnet.test',
@@ -153,6 +174,7 @@ class DemoSeeder extends Seeder
         ]);
 
         $selesai = Mahasiswa::forceCreate([
+            'tenant_id' => $this->tenantId(),
             'nama' => 'Siti Aminah',
             'nim' => '24410706002',
             'email' => 'siti@magnet.test',
@@ -167,6 +189,7 @@ class DemoSeeder extends Seeder
         ]);
 
         $baru = Mahasiswa::forceCreate([
+            'tenant_id' => $this->tenantId(),
             'nama' => 'Andi Pratama',
             'nim' => '24410706003',
             'email' => 'andi@magnet.test',
@@ -208,6 +231,7 @@ class DemoSeeder extends Seeder
     private function seedPerusahaan(): Perusahaan
     {
         return Perusahaan::forceCreate([
+            'tenant_id' => $this->tenantId(),
             'nama' => 'PT Teknologi Nusantara',
             'bidang_industri_id' => BidangIndustri::where('nama', 'Teknologi')->value('id'),
             'lokasi' => 'Lowokwaru, Kota Malang, Jawa Timur',
@@ -233,6 +257,7 @@ class DemoSeeder extends Seeder
         $lowongan = [];
         foreach ($defs as [$pekerjaan, $jenis, $remote]) {
             $lowongan[] = LowonganMagang::withoutEvents(fn () => LowonganMagang::forceCreate([
+                'tenant_id' => $this->tenantId(),
                 'kuota' => 3,
                 'pekerjaan_id' => Pekerjaan::where('nama', $pekerjaan)->value('id'),
                 'deskripsi' => "Program magang posisi {$pekerjaan} di PT Teknologi Nusantara.",
@@ -251,6 +276,7 @@ class DemoSeeder extends Seeder
     private function seedPengajuan(Mahasiswa $mahasiswa): void
     {
         $berkas = BerkasPengajuanMagang::forceCreate([
+            'tenant_id' => $this->tenantId(),
             'mahasiswa_id' => $mahasiswa->id,
             'cv' => 'pengajuan-magang/cv/cv_demo_andi.pdf',
             'transkrip_nilai' => 'pengajuan-magang/transkrip/transkrip_demo_andi.pdf',
@@ -269,6 +295,7 @@ class DemoSeeder extends Seeder
         $awal = Carbon::now()->subWeeks(3);
 
         $kontrak = KontrakMagang::forceCreate([
+            'tenant_id' => $this->tenantId(),
             'mahasiswa_id' => $mahasiswa->id,
             'dosen_id' => $dosen->id,
             'lowongan_magang_id' => $lowongan->id,
@@ -325,6 +352,7 @@ class DemoSeeder extends Seeder
         $awal = Carbon::now()->subMonths(5);
 
         $kontrak = KontrakMagang::forceCreate([
+            'tenant_id' => $this->tenantId(),
             'mahasiswa_id' => $mahasiswa->id,
             'dosen_id' => $dosen->id,
             'lowongan_magang_id' => $lowongan->id,

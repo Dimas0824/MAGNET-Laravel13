@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\DosenPembimbing;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -21,6 +22,7 @@ class DosenPembimbingFactory extends Factory
     public function definition(): array
     {
         return [
+            'tenant_id' => BelongsToTenant::defaultTenantId(),
             'nama' => $this->faker->name(),
             'nidn' => (string) $this->faker->unique()->numerify(str_repeat('#', 10)),
             'jenis_kelamin' => $this->faker->randomElement(['L', 'P']),

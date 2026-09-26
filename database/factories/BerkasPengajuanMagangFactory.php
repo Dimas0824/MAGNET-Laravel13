@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\BerkasPengajuanMagang;
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\Mahasiswa;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -23,6 +24,7 @@ class BerkasPengajuanMagangFactory extends Factory
         $mahasiswaIds = Mahasiswa::orderBy('id')->pluck('id')->toArray();
 
         return [
+            'tenant_id' => BelongsToTenant::defaultTenantId(),
             'mahasiswa_id' => $this->faker->randomElement($mahasiswaIds),
             'cv' => $this->faker->unique()->lexify('cv_?????').'.pdf',
             'transkrip_nilai' => $this->faker->unique()->lexify('transkrip_nilai_cv_?????').'.pdf',

@@ -16,9 +16,17 @@ use App\Models\Perusahaan;
 /**
  * Seed the master data (bidang industri, pekerjaan, lokasi) that factories
  * and the recommendation pipeline depend on. Safe to call multiple times.
+ *
+ * Also ensures the default tenant exists FIRST, so the BelongsToTenant creating
+ * hook stamps every row with a real tenant_id (otherwise rows are written with
+ * a NULL tenant_id and the tenant scope hides them from later reads).
  */
 function seedMasterData(): void
 {
+    if (! \App\Models\Tenant::query()->exists()) {
+        (new \Database\Seeders\TenantSeeder)->run();
+    }
+
     if (BidangIndustri::query()->exists()) {
         return;
     }
@@ -113,6 +121,7 @@ function lowonganMagang(array $overrides = []): LowonganMagang
         : Perusahaan::factory()->create();
 
     return LowonganMagang::withoutEvents(fn () => LowonganMagang::forceCreate(array_merge([
+        'tenant_id' => \App\Models\Concerns\BelongsToTenant::defaultTenantId(),
         'kuota' => 5,
         'pekerjaan_id' => Pekerjaan::where('nama', 'Software Engineer')->value('id'),
         'deskripsi' => 'Deskripsi magang',

@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Admin;
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 
@@ -21,6 +22,7 @@ class AdminFactory extends Factory
     public function definition(): array
     {
         return [
+            'tenant_id' => BelongsToTenant::defaultTenantId(),
             'nama' => $this->faker->name(),
             'nip' => (string) $this->faker->unique()->numerify('##################'),
         ];

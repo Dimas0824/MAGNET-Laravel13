@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\DosenPembimbing;
 use App\Models\KontrakMagang;
 use App\Models\LowonganMagang;
@@ -35,6 +36,7 @@ class KontrakMagangFactory extends Factory
         $finishDate = $this->faker->dateTimeBetween($startDate, '+1 year');
 
         return [
+            'tenant_id' => BelongsToTenant::defaultTenantId(),
             'mahasiswa_id' => $mahasiswaId,
             'dosen_id' => $dosenId,
             'lowongan_magang_id' => $lowonganId,

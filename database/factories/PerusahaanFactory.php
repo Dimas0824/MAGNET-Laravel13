@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\BidangIndustri;
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\Perusahaan;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -26,6 +27,7 @@ class PerusahaanFactory extends Factory
             ->toArray();
 
         return [
+            'tenant_id' => BelongsToTenant::defaultTenantId(),
             'nama' => $this->faker->company(),
             'bidang_industri_id' => $this->faker->randomElement($bidangIndustriIds),
             'lokasi' => $this->faker->address(),

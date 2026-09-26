@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\LokasiMagang;
 use App\Models\LowonganMagang;
 use App\Models\Pekerjaan;
@@ -31,6 +32,7 @@ class LowonganMagangFactory extends Factory
         $perusahaanIds = Perusahaan::pluck('id')->toArray();
 
         return [
+            'tenant_id' => BelongsToTenant::defaultTenantId(),
             'kuota' => $this->faker->numberBetween(1, 50),
             'pekerjaan_id' => $this->faker->randomElement($pekerjaanIds),
             'deskripsi' => $this->faker->paragraph(),
