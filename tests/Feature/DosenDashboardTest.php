@@ -58,9 +58,10 @@ it('does not run an N+1 of exists() queries per mahasiswa', function () {
     $count = count(DB::getQueryLog());
     DB::disableQueryLog();
 
-    // Old code: 2 exists() per bimbingan row (10+ for 5 rows). With eager
-    // aggregates it must stay bounded regardless of row count.
-    expect($count)->toBeLessThanOrEqual(12);
+    // Old code: 2 exists() per bimbingan row (10+ for 5 rows) plus three
+    // separate count() scans. With eager aggregates and one grouped stat query
+    // it must stay bounded regardless of row count.
+    expect($count)->toBeLessThanOrEqual(9);
 });
 
 it('does not reference the dropped lowongan_magang.nama column', function () {
@@ -73,4 +74,23 @@ it('does not reference the dropped lowongan_magang.nama column', function () {
     DB::disableQueryLog();
 
     expect($sql)->not->toContain('lowongan_magang`.`nama`');
+});
+
+it('reports the total and completed bimbingan counts from one grouped query', function () {
+    $dosen = dosenWithBimbingan(4);
+    actingAsDosen($dosen);
+
+    DB::enableQueryLog();
+    $this->get(route('dashboard'))->assertOk();
+    $log = collect(DB::getQueryLog());
+    DB::disableQueryLog();
+
+    $grouped = $log->filter(function (array $entry) {
+        $sql = strtolower($entry['query']);
+
+        return str_contains($sql, 'kontrak_magang') && str_contains($sql, 'count(*)')
+            && str_contains($sql, 'sum(case');
+    });
+
+    expect($grouped)->toHaveCount(1);
 });

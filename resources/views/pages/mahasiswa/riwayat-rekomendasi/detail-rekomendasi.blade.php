@@ -78,49 +78,47 @@ $getRankingKriteria = function () {
 };
 
 $getAlternatifLowongan = function () {
-    return LowonganMagang::with(['lokasiMagang', 'perusahaan.bidangIndustri', 'pekerjaan'])->get();
+    $mahasiswaId = $this->mahasiswa?->id;
+
+    $lowonganIds = $mahasiswaId
+        ? FinalRankRecommendation::where('mahasiswa_id', $mahasiswaId)->pluck('lowongan_magang_id')->unique()
+        : collect();
+
+    return LowonganMagang::with(['lokasiMagang', 'perusahaan.bidangIndustri', 'pekerjaan'])
+        ->when($lowonganIds->isNotEmpty(), fn ($q) => $q->whereIn('id', $lowonganIds))
+        ->limit(500)
+        ->get();
 };
 
 $getNumericTable = function () {
     $tanggal = request('tanggal');
+    $mahasiswaId = $this->mahasiswa?->id;
 
-    $query = EncodedAlternatives::with(['mahasiswa', 'lowonganMagang'])
-        ->when($tanggal, function ($query) use ($tanggal) {
-            return $query->whereDate('created_at', $tanggal);
-        })
-        ->when(! $tanggal, function ($query) {
-            return $query->whereDate('created_at', now()->toDateString());
-        })
-        ->orderBy('created_at', 'desc');
-
-    // Ambil data dan filter untuk mendapatkan data terbaru per lowongan_magang_id
-    $allData = $query->get();
-
-    return $this->getUniqueByLowonganId($allData);
+    return EncodedAlternatives::with(['mahasiswa', 'lowonganMagang'])
+        ->where('mahasiswa_id', $mahasiswaId)
+        ->when($tanggal, fn ($q) => $q->whereDate('created_at', $tanggal))
+        ->when(! $tanggal, fn ($q) => $q->whereDate('created_at', now()->toDateString()))
+        ->latestPerLowongan()
+        ->limit(500)
+        ->get();
 };
 
 $getUniqueVectorNormalization = function () {
     $tanggal = request('tanggal');
+    $mahasiswaId = $this->mahasiswa?->id;
 
-    $query = VectorNormalization::with(['mahasiswa', 'lowonganMagang'])
-        ->when($tanggal, function ($query) use ($tanggal) {
-            return $query->whereDate('created_at', $tanggal);
-        })
-        ->when(! $tanggal, function ($query) {
-            return $query->whereDate('created_at', now()->toDateString());
-        })
-        ->orderBy('created_at', 'desc');
-
-    // Ambil data dan filter untuk mendapatkan data terbaru per lowongan_magang_id
-    $allData = $query->get();
-
-    return $this->getUniqueByLowonganId($allData);
+    return VectorNormalization::with(['mahasiswa', 'lowonganMagang'])
+        ->where('mahasiswa_id', $mahasiswaId)
+        ->when($tanggal, fn ($q) => $q->whereDate('created_at', $tanggal))
+        ->when(! $tanggal, fn ($q) => $q->whereDate('created_at', now()->toDateString()))
+        ->latestPerLowongan()
+        ->limit(500)
+        ->get();
 };
 
 $getNormalisasiEuclidean = function () {
-    $numericTable = $this->getNumericTable();
+    $numericTable = collect($this->numericTable);
 
-    // Return empty array if no data
     if ($numericTable->isEmpty()) {
         return [
             'lokasi_magang' => 0,
@@ -163,127 +161,78 @@ $getNormalisasiEuclidean = function () {
 
 $getRankingRS = function () {
     $tanggal = request('tanggal');
+    $mahasiswaId = $this->mahasiswa?->id;
 
-    $query = RatioSystem::with(['mahasiswa', 'lowonganMagang'])
-        ->when($tanggal, function ($query) use ($tanggal) {
-            return $query->whereDate('created_at', $tanggal);
-        })
-        ->when(! $tanggal, function ($query) {
-            return $query->whereDate('created_at', now()->toDateString());
-        })
-        ->orderBy('created_at', 'desc');
-
-    // Ambil data dan filter untuk mendapatkan data terbaru per lowongan_magang_id
-    $allData = $query->get();
-    $uniqueData = $this->getUniqueByLowonganId($allData);
-
-    // Urutkan berdasarkan rank setelah filtering
-    return $uniqueData->sortBy('rank')->values();
+    return RatioSystem::with(['mahasiswa', 'lowonganMagang'])
+        ->where('mahasiswa_id', $mahasiswaId)
+        ->when($tanggal, fn ($q) => $q->whereDate('created_at', $tanggal))
+        ->when(! $tanggal, fn ($q) => $q->whereDate('created_at', now()->toDateString()))
+        ->latestPerLowongan()
+        ->orderBy('rank')
+        ->limit(500)
+        ->get();
 };
 
 $getRankingRP = function () {
     $tanggal = request('tanggal');
+    $mahasiswaId = $this->mahasiswa?->id;
 
-    $query = ReferencePoint::with(['mahasiswa', 'lowonganMagang'])
-        ->when($tanggal, function ($query) use ($tanggal) {
-            return $query->whereDate('created_at', $tanggal);
-        })
-        ->when(! $tanggal, function ($query) {
-            return $query->whereDate('created_at', now()->toDateString());
-        })
-        ->orderBy('created_at', 'desc');
-
-    // Ambil data dan filter untuk mendapatkan data terbaru per lowongan_magang_id
-    $allData = $query->get();
-    $uniqueData = $this->getUniqueByLowonganId($allData);
-
-    // Urutkan berdasarkan rank setelah filtering
-    return $uniqueData->sortBy('rank')->values();
+    return ReferencePoint::with(['mahasiswa', 'lowonganMagang'])
+        ->where('mahasiswa_id', $mahasiswaId)
+        ->when($tanggal, fn ($q) => $q->whereDate('created_at', $tanggal))
+        ->when(! $tanggal, fn ($q) => $q->whereDate('created_at', now()->toDateString()))
+        ->latestPerLowongan()
+        ->orderBy('rank')
+        ->limit(500)
+        ->get();
 };
 
 $getRankingFMF = function () {
     $tanggal = request('tanggal');
+    $mahasiswaId = $this->mahasiswa?->id;
 
-    $query = FullMultiplicativeForm::with(['mahasiswa', 'lowonganMagang'])
-        ->when($tanggal, function ($query) use ($tanggal) {
-            return $query->whereDate('created_at', $tanggal);
-        })
-        ->when(! $tanggal, function ($query) {
-            return $query->whereDate('created_at', now()->toDateString());
-        })
-        ->orderBy('created_at', 'desc');
-
-    // Ambil data dan filter untuk mendapatkan data terbaru per lowongan_magang_id
-    $allData = $query->get();
-    $uniqueData = $this->getUniqueByLowonganId($allData);
-
-    // Urutkan berdasarkan rank setelah filtering
-    return $uniqueData->sortBy('rank')->values();
+    return FullMultiplicativeForm::with(['mahasiswa', 'lowonganMagang'])
+        ->where('mahasiswa_id', $mahasiswaId)
+        ->when($tanggal, fn ($q) => $q->whereDate('created_at', $tanggal))
+        ->when(! $tanggal, fn ($q) => $q->whereDate('created_at', now()->toDateString()))
+        ->latestPerLowongan()
+        ->orderBy('rank')
+        ->limit(500)
+        ->get();
 };
 
 $getRankingGlobal = function () {
     $tanggal = request('tanggal');
+    $mahasiswaId = $this->mahasiswa?->id;
 
-    $query = FinalRankRecommendation::with(['mahasiswa', 'lowonganMagang.perusahaan', 'ratioSystem', 'referencePoint', 'fullMultiplicativeForm'])
-        ->when($tanggal, fn ($query) => $query->whereDate('created_at', $tanggal))
-        ->when(! $tanggal, fn ($query) => $query->whereDate('created_at', now()->toDateString()))
-        ->orderBy('created_at', 'desc');
-
-    // Ambil data dan filter untuk mendapatkan data terbaru per lowongan_magang_id
-    $allData = $query->get();
-    $uniqueData = $this->getUniqueByLowonganId($allData);
-
-    // Urutkan berdasarkan rank setelah filtering
-    return $uniqueData->sortBy('rank')->values();
+    return FinalRankRecommendation::with(['mahasiswa', 'lowonganMagang.perusahaan', 'ratioSystem', 'referencePoint', 'fullMultiplicativeForm'])
+        ->where('mahasiswa_id', $mahasiswaId)
+        ->when($tanggal, fn ($q) => $q->whereDate('created_at', $tanggal))
+        ->when(! $tanggal, fn ($q) => $q->whereDate('created_at', now()->toDateString()))
+        ->latestPerLowongan()
+        ->orderBy('rank')
+        ->limit(500)
+        ->get();
 };
 
 $getTopRekomendasi = function () {
     $tanggal = request('tanggal');
     $mahasiswa = $this->mahasiswa;
 
-    // Ambil data final ranking dengan relasi
-    $query = FinalRankRecommendation::with(['mahasiswa', 'lowonganMagang', 'ratioSystem', 'referencePoint', 'fullMultiplicativeForm'])
-        ->when($tanggal, function ($query) use ($tanggal) {
-            return $query->whereDate('created_at', $tanggal);
-        })
-        ->when(! $tanggal, function ($query) {
-            return $query->whereDate('created_at', now()->toDateString());
-        })
+    return FinalRankRecommendation::with(['mahasiswa', 'lowonganMagang', 'ratioSystem', 'referencePoint', 'fullMultiplicativeForm'])
         ->where('mahasiswa_id', $mahasiswa->id)
-        ->orderBy('created_at', 'desc');
+        ->when($tanggal, fn ($q) => $q->whereDate('created_at', $tanggal))
+        ->when(! $tanggal, fn ($q) => $q->whereDate('created_at', now()->toDateString()))
+        ->latestPerLowongan()
+        ->orderBy('avg_rank')
+        ->limit(10)
+        ->get()
+        ->values()
+        ->map(function ($item, $index) {
+            $item->display_rank = $index + 1;
 
-    // Ambil semua data dan filter untuk mendapatkan data terbaru per lowongan_magang_id
-    $allData = $query->get();
-    $uniqueData = $this->getUniqueByLowonganId($allData);
-
-    // Urutkan berdasarkan avg_rank dan batasi 10 data
-    $topRecommendations = $uniqueData->sortBy('avg_rank')->take(10)->values();
-
-    // Re-rank berdasarkan urutan
-    return $topRecommendations->map(function ($item, $index) {
-        $item->display_rank = $index + 1;
-
-        return $item;
-    });
-};
-
-// Helper function untuk mendapatkan data unik berdasarkan lowongan_magang_id
-$getUniqueByLowonganId = function ($collection) {
-    $uniqueData = collect();
-    $usedLowonganIds = [];
-
-    foreach ($collection as $item) {
-        $lowonganId = $item->lowongan_magang_id ?? $item->id;
-
-        // Jika lowongan_magang_id belum ada dalam hasil, tambahkan
-        // Data sudah diurutkan berdasarkan created_at desc, jadi yang pertama adalah yang terbaru
-        if (! in_array($lowonganId, $usedLowonganIds)) {
-            $uniqueData->push($item);
-            $usedLowonganIds[] = $lowonganId;
-        }
-    }
-
-    return $uniqueData;
+            return $item;
+        });
 };
 
 ?>

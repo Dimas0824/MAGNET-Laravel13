@@ -58,3 +58,41 @@ it('shows the open-remote preference value from the criteria relation', function
     $response->assertSee('Open Remote', false);
     $response->assertSee('<td class="px-6 py-3">Ya', false);
 });
+
+it('does not load unbounded tables to render the calculation detail', function () {
+    $mahasiswa = mahasiswaDenganPreferensi();
+    seedDetailRecommendation($mahasiswa);
+    actingAsMahasiswa($mahasiswa);
+
+    DB::enableQueryLog();
+    $this->get(route('mahasiswa.detail-rekomendasi'))->assertOk();
+    $log = DB::getQueryLog();
+    DB::disableQueryLog();
+
+    // A read is "unbounded" only if it can return the whole table: no LIMIT,
+    // and no WHERE constraint at all. Eager loads of the form
+    // `where id in (...)` are bounded by their parent row set and are fine.
+    $unbounded = collect($log)->filter(function (array $entry) {
+        $sql = strtolower($entry['query']);
+
+        $readsBigTable = str_contains($sql, 'lowongan_magang')
+            || str_contains($sql, 'final_rank_recommendation')
+            || str_contains($sql, 'vector_normalization')
+            || str_contains($sql, 'ratio_system')
+            || str_contains($sql, 'reference_point')
+            || str_contains($sql, 'full_multiplicative_form')
+            || str_contains($sql, 'encoded_alternatives');
+
+        $isAggregate = str_contains($sql, 'count(') || str_contains($sql, 'max(')
+            || str_contains($sql, 'min(') || str_contains($sql, 'sum(') || str_contains($sql, 'avg(');
+
+        $hasLimit = str_contains($sql, 'limit ');
+        $hasWhere = str_contains($sql, ' where ');
+
+        return $readsBigTable && ! $isAggregate && ! $hasLimit && ! $hasWhere;
+    });
+
+    expect($unbounded)->toBeEmpty(
+        'Detail page issued unbounded reads: '.$unbounded->pluck('query')->implode(' | ')
+    );
+});

@@ -78,16 +78,27 @@ $paginatedMahasiswa = computed(function () {
     return $this->mahasiswaBimbingan;
 });
 
-$totalMahasiswa = computed(function () {
+$bimbinganStats = computed(function () {
     $dosenId = Auth::guard('dosen')->id();
 
-    return KontrakMagang::where('dosen_id', $dosenId)->join('mahasiswa', 'kontrak_magang.mahasiswa_id', '=', 'mahasiswa.id')->count();
+    $row = KontrakMagang::where('dosen_id', $dosenId)
+        ->join('mahasiswa', 'kontrak_magang.mahasiswa_id', '=', 'mahasiswa.id')
+        ->selectRaw('COUNT(*) as total')
+        ->selectRaw("SUM(CASE WHEN mahasiswa.status_magang = 'selesai magang' THEN 1 ELSE 0 END) as selesai")
+        ->first();
+
+    return [
+        'total' => (int) ($row->total ?? 0),
+        'selesai' => (int) ($row->selesai ?? 0),
+    ];
+});
+
+$totalMahasiswa = computed(function () {
+    return $this->bimbinganStats['total'];
 });
 
 $mahasiswaSelesai = computed(function () {
-    $dosenId = Auth::guard('dosen')->id();
-
-    return KontrakMagang::where('dosen_id', $dosenId)->join('mahasiswa', 'kontrak_magang.mahasiswa_id', '=', 'mahasiswa.id')->where('mahasiswa.status_magang', 'selesai magang')->count();
+    return $this->bimbinganStats['selesai'];
 });
 
 $feedbackDiberikan = computed(function () {

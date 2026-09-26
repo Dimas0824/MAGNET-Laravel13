@@ -31,6 +31,7 @@ state([
     'surat_izin_magang' => null,
     'partner_companies' => [],
     'available_lowongan' => collect(),
+    'bidang_industri_list' => [],
     'mahasiswa' => null,
     'existing_contract' => null,
     'can_register' => false,
@@ -65,6 +66,8 @@ mount(function () {
         // Determine if student can register for new internship
         // Allow registration if no contract exists, or previous contract was rejected/completed
         $this->can_register = ! $this->existing_contract || in_array($this->existing_contract->status, ['ditolak', 'selesai']) || $this->mahasiswa->status_magang === 'belum magang' || $this->mahasiswa->status_magang === 'selesai magang';
+
+        $this->bidang_industri_list = BidangIndustri::orderBy('nama')->pluck('nama')->all();
 
         if ($this->can_register) {
             $this->partner_companies = Perusahaan::where('kategori', 'mitra')
@@ -667,8 +670,8 @@ $getStatusBadgeClass = function ($status) {
                                     <x-flux::select wire:model="bidang_industri" placeholder="Pilih bidang industri"
                                         class="mt-1">
                                         <option value="">Pilih bidang industri</option>
-                                        @foreach (BidangIndustri::orderBy('nama')->get() as $bidang)
-                                            <option value="{{ $bidang->nama }}">{{ $bidang->nama }}</option>
+                                        @foreach ($bidang_industri_list as $bidang)
+                                            <option value="{{ $bidang }}">{{ $bidang }}</option>
                                         @endforeach
                                     </x-flux::select>
                                     <x-flux::error for="bidang_industri" />
