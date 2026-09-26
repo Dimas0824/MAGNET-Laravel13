@@ -26,6 +26,7 @@ yarn-error.log
 
 # Local agent tooling state
 .omo/
+.agent/
 
 # Graphify knowledge-graph output (local, regenerable)
 /graphify-out/
