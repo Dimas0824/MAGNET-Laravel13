@@ -2,7 +2,6 @@
 use Illuminate\Support\Facades\Auth;
 use App\Models\Mahasiswa;
 use App\Models\KontrakMagang;
-use App\Models\Magang;
 use App\Models\Perusahaan;
 use function Livewire\Volt\{layout, state, mount};
 
@@ -22,7 +21,7 @@ mount(function () {
     if ($this->mahasiswa) {
         // Get the latest kontrak magang for the mahasiswa
         $this->kontrak_magang = KontrakMagang::where('mahasiswa_id', $this->mahasiswa->id)
-            ->with(['magang.perusahaan', 'magang'])
+            ->with(['lowonganMagang.perusahaan', 'lowonganMagang.pekerjaan', 'lowonganMagang.lokasiMagang'])
             ->latest()
             ->first();
 
@@ -33,16 +32,16 @@ mount(function () {
             case 'sedang magang':
                 $this->status = 'Sedang Magang';
                 if ($this->kontrak_magang) {
-                    $this->perusahaan = $this->kontrak_magang->magang->perusahaan;
-                    $this->magang = $this->kontrak_magang->magang;
+                    $this->perusahaan = $this->kontrak_magang->lowonganMagang->perusahaan;
+                    $this->magang = $this->kontrak_magang->lowonganMagang;
                 }
                 break;
 
             case 'selesai magang':
                 $this->status = 'Selesai Magang';
                 if ($this->kontrak_magang) {
-                    $this->perusahaan = $this->kontrak_magang->magang->perusahaan;
-                    $this->magang = $this->kontrak_magang->magang;
+                    $this->perusahaan = $this->kontrak_magang->lowonganMagang->perusahaan;
+                    $this->magang = $this->kontrak_magang->lowonganMagang;
                 }
                 break;
 
@@ -101,7 +100,7 @@ mount(function () {
                     <!-- Internship Details -->
                     <div class="space-y-3">
                         <div>
-                            <h4 class="font-bold text-xl text-gray-800">{{ $this->magang->nama }}</h4>
+                            <h4 class="font-bold text-xl text-gray-800">{{ $this->magang->pekerjaan->nama ?? 'Magang' }}</h4>
                             <div class="flex items-center text-gray-600 mt-1">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -109,7 +108,7 @@ mount(function () {
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
-                                <span>{{ $this->magang->lokasi }}</span>
+                                <span>{{ $this->magang->lokasiMagang->lokasi ?? '-' }}</span>
                             </div>
                         </div>
 

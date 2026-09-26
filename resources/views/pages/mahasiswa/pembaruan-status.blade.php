@@ -64,10 +64,10 @@ $checkPendingContract = function () {
         $this->hasPendingContract = true;
         $this->pendingContractInfo = [
             'id' => $pendingContract->id,
-            'perusahaan_nama' => $pendingContract->perusahaan->nama ?? 'Tidak tersedia',
-            'pembimbing_nama' => $pendingContract->pembimbingLapangan->nama ?? 'Tidak tersedia',
-            'tanggal_mulai' => $pendingContract->tanggal_mulai,
-            'tanggal_selesai' => $pendingContract->tanggal_selesai,
+            'perusahaan_nama' => $pendingContract->lowonganMagang->perusahaan->nama ?? 'Tidak tersedia',
+            'pembimbing_nama' => $pendingContract->dosenPembimbing->nama ?? 'Tidak tersedia',
+            'tanggal_mulai' => $pendingContract->waktu_awal,
+            'tanggal_selesai' => $pendingContract->waktu_akhir,
             'created_at' => $pendingContract->created_at,
         ];
     } else {

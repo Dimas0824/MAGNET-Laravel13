@@ -49,3 +49,19 @@ it('renders the log-mahasiswa page without the dropped nama column', function ()
 
     $this->get(route('mahasiswa.log-mahasiswa'))->assertOk();
 });
+
+it('renders the log pages for a student in an active internship', function () {
+    $mahasiswa = Mahasiswa::factory()->create(['status_magang' => 'sedang magang']);
+    actingAsMahasiswa($mahasiswa);
+
+    $lowongan = lowonganMagang();
+    KontrakMagang::factory()->create([
+        'mahasiswa_id' => $mahasiswa->id,
+        'dosen_id' => \App\Models\DosenPembimbing::factory()->create()->id,
+        'lowongan_magang_id' => $lowongan->id,
+        'waktu_awal' => now()->subMonth(),
+        'waktu_akhir' => now()->addMonth(),
+    ]);
+
+    $this->get(route('mahasiswa.log-mahasiswa'))->assertOk()->assertSee('Software Engineer');
+});
