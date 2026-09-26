@@ -1,0 +1,420 @@
+// MAGNET — AS-IS schema (synthesized from database/migrations, not from models)
+// MySQL 8. Deleting this is regenerable; it is a design artifact, not app code.
+// Verified against the migration chain; superseded/dropped tables are omitted.
+
+Project MAGNET {
+  database_type: 'MySQL'
+  Note: '''
+  AS-IS schema. Three independent user tables (mahasiswa/dosen_pembimbing/admin)
+  share one id space. MULTIMOORA materializes 6 stage tables per (mahasiswa, lowongan)
+  with no uniqueness, so reads dedupe by newest created_at.
+  '''
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Laravel framework tables (defaults, largely unused by the domain)
+// ─────────────────────────────────────────────────────────────────────────────
+Table users {
+  id bigint [pk, increment]
+  name varchar
+  email varchar [unique]
+  email_verified_at timestamp [null]
+  password varchar
+  role enum('admin','mahasiswa','dosen') [default: 'mahasiswa'] // DEAD: app uses 3 separate tables
+  remember_token varchar [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table sessions {
+  id varchar [pk]
+  user_id bigint [null, index]
+  ip_address varchar(45) [null]
+  user_agent text [null]
+  payload longtext
+  last_activity int [index]
+}
+
+Table password_reset_tokens {
+  email varchar [pk]
+  token varchar
+  created_at timestamp [null]
+}
+
+Table failed_jobs {
+  id bigint [pk, increment]
+  uuid varchar [unique]
+  connection text
+  queue text
+  payload longtext
+  exception longtext
+  failed_at timestamp [default: `CURRENT_TIMESTAMP`]
+}
+
+Table personal_access_tokens {
+  id bigint [pk, increment]
+  tokenable_type varchar [note: 'morphs']
+  tokenable_id bigint [note: 'morphs']
+  name varchar
+  token varchar(64) [unique]
+  abilities text [null]
+  last_used_at timestamp [null]
+  expires_at timestamp [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Identity — three tables, one shared id space, no unifying users row
+// ─────────────────────────────────────────────────────────────────────────────
+Table mahasiswa {
+  id bigint [pk, increment]
+  nama varchar
+  nim varchar(11) [unique]
+  email varchar [unique]
+  password varchar [null]
+  angkatan int                    // year, not validated by DB
+  jenis_kelamin enum('L','P')
+  tanggal_lahir date
+  jurusan varchar [default: 'Teknologi Informasi']
+  program_studi enum('D4 Teknik Informatika','D4 Sistem Informasi Bisnis','D2 Pengembangan Piranti Lunak Situs')
+  status_magang enum('belum magang','sedang magang','selesai magang') [default: 'belum magang']
+  alamat text
+  foto varchar [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table dosen_pembimbing {
+  id bigint [pk, increment]
+  nama varchar
+  nidn char(10) [unique]
+  password varchar [null]
+  jenis_kelamin enum('L','P')
+  foto varchar [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table admin {
+  id bigint [pk, increment]
+  nama varchar
+  nip char(18) [unique]
+  password varchar
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Master / reference data
+// ─────────────────────────────────────────────────────────────────────────────
+Table bidang_industri {
+  id bigint [pk, increment]
+  nama varchar(20)
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table pekerjaan {
+  id bigint [pk, increment]
+  nama varchar
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table lokasi_magang {
+  id bigint [pk, increment]
+  kategori_lokasi varchar
+  lokasi varchar [unique]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table perusahaan {
+  id bigint [pk, increment]
+  nama varchar
+  bidang_industri_id bigint                 // FK added later
+  lokasi varchar(100)
+  kategori enum('mitra','non_mitra')
+  rating float [null]
+  logo varchar [null]
+  website varchar
+  deskripsi text
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Recruitment
+// ─────────────────────────────────────────────────────────────────────────────
+Table lowongan_magang {
+  id bigint [pk, increment]
+  kuota int
+  pekerjaan_id bigint
+  deskripsi text
+  persyaratan text
+  jenis_magang enum('berbayar','tidak berbayar')
+  open_remote enum('ya','tidak')
+  status enum('buka','tutup') [default: 'buka']
+  lokasi_magang_id bigint
+  perusahaan_id bigint
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table berkas_pengajuan_magang {
+  id bigint [pk, increment]
+  mahasiswa_id bigint
+  cv varchar
+  transkrip_nilai varchar
+  portfolio varchar [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table form_pengajuan_magang {
+  id bigint [pk, increment]
+  pengajuan_id bigint
+  status enum('diproses','diterima','ditolak') [default: 'diproses']
+  keterangan varchar(100) [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table kontrak_magang {
+  id bigint [pk, increment]
+  mahasiswa_id bigint
+  dosen_id bigint [null]
+  lowongan_magang_id bigint
+  waktu_awal datetime
+  waktu_akhir datetime
+  status enum('menunggu_persetujuan','disetujui','ditolak') [default: 'menunggu_persetujuan']
+  keterangan varchar [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table log_magang {
+  id bigint [pk, increment]
+  kontrak_magang_id bigint
+  kegiatan text
+  tanggal date
+  jam_masuk time
+  jam_keluar time
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table ulasan_magang {
+  id bigint [pk, increment]
+  kontrak_magang_id bigint
+  rating int
+  komentar text
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table umpan_balik_magang {
+  id bigint [pk, increment]
+  kontrak_magang_id bigint
+  komentar varchar(50)
+  tanggal date
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Chats — polymorphic participants bolted onto an unsigned FK-less pair
+// ─────────────────────────────────────────────────────────────────────────────
+Table chats {
+  id bigint [pk, increment]
+  kontrak_magang_id bigint
+  sender_id bigint                  // NO FK: polymorphic by sender_type
+  sender_type enum('mahasiswa','dosen') [default: 'mahasiswa']
+  receiver_id bigint                // NO FK: polymorphic by receiver_type
+  receiver_type enum('mahasiswa','dosen') [default: 'dosen']
+  message text [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+
+  indexes {
+    (kontrak_magang_id, created_at)
+    (sender_id, receiver_id)
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Criteria selection — 5 near-identical tables, one row per (mahasiswa, choice)
+// ─────────────────────────────────────────────────────────────────────────────
+Table kriteria_pekerjaan {
+  id bigint [pk, increment]
+  pekerjaan_id bigint
+  mahasiswa_id bigint
+  rank int
+  bobot decimal(30,15)
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table kriteria_bidang_industri {
+  id bigint [pk, increment]
+  bidang_industri_id bigint
+  mahasiswa_id bigint
+  rank int
+  bobot decimal(30,15)
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table kriteria_lokasi_magang {
+  id bigint [pk, increment]
+  lokasi_magang_id bigint
+  mahasiswa_id bigint
+  rank int
+  bobot decimal(30,15)
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table kriteria_jenis_magang {
+  id bigint [pk, increment]
+  jenis_magang enum('berbayar','tidak berbayar','Semua') [default: 'Semua']
+  mahasiswa_id bigint
+  rank int
+  bobot decimal(30,15)
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table kriteria_open_remote {
+  id bigint [pk, increment]
+  open_remote enum('ya','tidak','Semua') [default: 'Semua']
+  mahasiswa_id bigint
+  rank int
+  bobot decimal(30,15)
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MULTIMOORA materialized stages — append-only, no uniqueness, ids mismatched
+// ─────────────────────────────────────────────────────────────────────────────
+Table encoded_alternatives {
+  id bigint [pk, increment]
+  mahasiswa_id bigint
+  lowongan_magang_id bigint
+  pekerjaan int
+  open_remote int
+  jenis_magang int
+  bidang_industri int
+  lokasi_magang int
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table vector_normalization {
+  id bigint [pk, increment]
+  mahasiswa_id bigint
+  lowongan_magang_id bigint
+  pekerjaan decimal(30,15)
+  open_remote decimal(30,15)
+  jenis_magang decimal(30,15)
+  bidang_industri decimal(30,15)
+  lokasi_magang decimal(30,15)
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table ratio_system {
+  id bigint [pk, increment]
+  mahasiswa_id bigint
+  lowongan_magang_id bigint
+  score decimal(30,15)
+  rank int
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table reference_point {
+  id bigint [pk, increment]
+  mahasiswa_id bigint
+  lowongan_magang_id bigint
+  pekerjaan decimal(30,15)
+  open_remote decimal(30,15)
+  jenis_magang decimal(30,15)
+  bidang_industri decimal(30,15)
+  lokasi_magang decimal(30,15)
+  max_score decimal(30,15)
+  rank int
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table full_multiplicative_form {
+  id bigint [pk, increment]
+  mahasiswa_id bigint
+  lowongan_magang_id bigint
+  score decimal(30,15)
+  rank int
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table final_rank_recommendation {
+  id bigint [pk, increment]
+  mahasiswa_id bigint
+  lowongan_magang_id bigint
+  ratio_system_id bigint
+  reference_point_id bigint
+  fmf_id bigint
+  avg_rank decimal(30,15)
+  rank int
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Relationships (final state after the migration chain)
+// ─────────────────────────────────────────────────────────────────────────────
+Ref: perusahaan.bidang_industri_id > bidang_industri.id
+Ref: lowongan_magang.pekerjaan_id > pekerjaan.id
+Ref: lowongan_magang.lokasi_magang_id > lokasi_magang.id
+Ref: lowongan_magang.perusahaan_id > perusahaan.id [delete: cascade]
+
+Ref: berkas_pengajuan_magang.mahasiswa_id > mahasiswa.id [delete: cascade]
+Ref: form_pengajuan_magang.pengajuan_id > berkas_pengajuan_magang.id [delete: cascade]
+
+Ref: kontrak_magang.mahasiswa_id > mahasiswa.id [delete: cascade]
+Ref: kontrak_magang.dosen_id > dosen_pembimbing.id [delete: cascade]
+Ref: kontrak_magang.lowongan_magang_id > lowongan_magang.id [delete: cascade]
+
+Ref: log_magang.kontrak_magang_id > kontrak_magang.id [delete: cascade]
+Ref: ulasan_magang.kontrak_magang_id > kontrak_magang.id [delete: cascade]
+Ref: umpan_balik_magang.kontrak_magang_id > kontrak_magang.id [delete: cascade]
+Ref: chats.kontrak_magang_id > kontrak_magang.id [delete: cascade]
+
+Ref: kriteria_pekerjaan.pekerjaan_id > pekerjaan.id [delete: cascade]
+Ref: kriteria_pekerjaan.mahasiswa_id > mahasiswa.id [delete: cascade]
+Ref: kriteria_bidang_industri.bidang_industri_id > bidang_industri.id [delete: cascade]
+Ref: kriteria_bidang_industri.mahasiswa_id > mahasiswa.id [delete: cascade]
+Ref: kriteria_lokasi_magang.lokasi_magang_id > lokasi_magang.id [delete: cascade]
+Ref: kriteria_lokasi_magang.mahasiswa_id > mahasiswa.id [delete: cascade]
+Ref: kriteria_jenis_magang.mahasiswa_id > mahasiswa.id [delete: cascade]
+Ref: kriteria_open_remote.mahasiswa_id > mahasiswa.id [delete: cascade]
+
+Ref: encoded_alternatives.mahasiswa_id > mahasiswa.id [delete: cascade]
+Ref: encoded_alternatives.lowongan_magang_id > lowongan_magang.id [delete: cascade]
+Ref: vector_normalization.mahasiswa_id > mahasiswa.id [delete: cascade]
+Ref: vector_normalization.lowongan_magang_id > lowongan_magang.id [delete: cascade]
+Ref: ratio_system.mahasiswa_id > mahasiswa.id [delete: cascade]
+Ref: ratio_system.lowongan_magang_id > lowongan_magang.id [delete: cascade]
+Ref: reference_point.mahasiswa_id > mahasiswa.id [delete: cascade]
+Ref: reference_point.lowongan_magang_id > lowongan_magang.id [delete: cascade]
+Ref: full_multiplicative_form.mahasiswa_id > mahasiswa.id [delete: cascade]
+Ref: full_multiplicative_form.lowongan_magang_id > lowongan_magang.id [delete: cascade]
+
+Ref: final_rank_recommendation.mahasiswa_id > mahasiswa.id [delete: cascade]
+Ref: final_rank_recommendation.lowongan_magang_id > lowongan_magang.id [delete: cascade]
+Ref: final_rank_recommendation.ratio_system_id > ratio_system.id [delete: cascade]
+Ref: final_rank_recommendation.reference_point_id > reference_point.id [delete: cascade]
+Ref: final_rank_recommendation.fmf_id > full_multiplicative_form.id [delete: cascade]
