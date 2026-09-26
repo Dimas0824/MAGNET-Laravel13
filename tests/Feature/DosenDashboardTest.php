@@ -50,18 +50,28 @@ it('renders the dosen dashboard with bimbingan rows', function () {
 });
 
 it('does not run an N+1 of exists() queries per mahasiswa', function () {
-    $dosen = dosenWithBimbingan(5);
-    actingAsDosen($dosen);
+    // Old code ran 2 exists() per bimbingan row (10+ for 5 rows) plus three
+    // separate count() scans. Prove there is no N+1 by comparing the query
+    // count at two sizes: constants (incl. the tenant-boot lookup) cancel out,
+    // so a growing count means an N+1 regression.
+    $countQueries = function (int $rows): int {
+        $dosen = dosenWithBimbingan($rows);
+        actingAsDosen($dosen);
 
-    DB::enableQueryLog();
-    $this->get(route('dashboard'))->assertOk();
-    $count = count(DB::getQueryLog());
-    DB::disableQueryLog();
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->get(route('dashboard'))->assertOk();
+        $count = count(DB::getQueryLog());
+        DB::disableQueryLog();
 
-    // Old code: 2 exists() per bimbingan row (10+ for 5 rows) plus three
-    // separate count() scans. With eager aggregates and one grouped stat query
-    // it must stay bounded regardless of row count.
-    expect($count)->toBeLessThanOrEqual(9);
+        return $count;
+    };
+
+    $small = $countQueries(3);
+    $large = $countQueries(9);
+
+    expect($small)->toBeLessThanOrEqual(11)
+        ->and($large)->toBe($small);
 });
 
 it('does not reference the dropped lowongan_magang.nama column', function () {

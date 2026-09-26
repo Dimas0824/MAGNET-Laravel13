@@ -52,17 +52,31 @@ it('renders the dashboard for an authenticated mahasiswa', function () {
 });
 
 it('runs a bounded number of queries for the recommendations', function () {
-    $mahasiswa = mahasiswaDenganPreferensi();
-    seedRecommendations($mahasiswa, 5);
-    actingAsMahasiswa($mahasiswa);
+    // The recommendation page must not scale its query count with the number of
+    // recommendations (no N+1). Prove it by comparing the count at two sizes:
+    // the tenant-boot query and other constants cancel out, so a growing count
+    // means an N+1 regression.
+    $countQueries = function (int $rows): int {
+        $mahasiswa = mahasiswaDenganPreferensi();
+        seedRecommendations($mahasiswa, $rows);
+        actingAsMahasiswa($mahasiswa);
 
-    DB::enableQueryLog();
-    $this->get(route('dashboard'))->assertOk();
-    $queryCount = count(DB::getQueryLog());
-    DB::disableQueryLog();
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->get(route('dashboard'))->assertOk();
+        $count = count(DB::getQueryLog());
+        DB::disableQueryLog();
 
-    // A handful of queries (recommendations + preferences + lookups), not N+1.
-    expect($queryCount)->toBeLessThanOrEqual(14);
+        return $count;
+    };
+
+    $small = $countQueries(2);
+    $large = $countQueries(8);
+
+    // A handful of constant queries (recommendations + preferences + one tenant
+    // boot lookup), and it must NOT grow with the row count.
+    expect($small)->toBeLessThanOrEqual(16)
+        ->and($large)->toBe($small);
 });
 
 it('does not reference the dropped lowongan_magang.nama column', function () {
