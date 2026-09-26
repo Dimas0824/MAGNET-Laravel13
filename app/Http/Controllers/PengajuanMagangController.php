@@ -228,7 +228,53 @@ class PengajuanMagangController extends Controller
 
         $this->authorizeBerkasAccess($berkas);
 
+        // PII access audit: record WHO read WHICH student's document, and when.
+        $this->logBerkasAccess($berkas, $type);
+
         return Storage::disk(self::DISK)->download($path);
+    }
+
+    /**
+     * Write an `accessed` audit row for a PII download. Uses the Auditable
+     * helper so actor/ip/user_agent capture matches the change-history rows.
+     */
+    private function logBerkasAccess(BerkasPengajuanMagang $berkas, string $type): void
+    {
+        \App\Models\AuditLog::create([
+            'auditable_type' => BerkasPengajuanMagang::class,
+            'auditable_id' => $berkas->id,
+            'event' => \App\Models\AuditLog::EVENT_ACCESSED,
+            'old_values' => null,
+            'new_values' => ['document' => $type],
+            'actor_user_id' => $this->currentActorUserId(),
+            'actor_role' => $this->currentActorRole(),
+            'ip' => request()->ip(),
+            'user_agent' => substr((string) request()->userAgent(), 0, 255),
+            'created_at' => now(),
+        ]);
+    }
+
+    private function currentActorUserId(): ?int
+    {
+        foreach (['mahasiswa', 'dosen', 'admin'] as $guard) {
+            $user = auth($guard)->user();
+            if ($user !== null) {
+                return $user->user_id;
+            }
+        }
+
+        return null;
+    }
+
+    private function currentActorRole(): ?string
+    {
+        foreach (['mahasiswa', 'dosen', 'admin'] as $guard) {
+            if (auth($guard)->check()) {
+                return $guard;
+            }
+        }
+
+        return null;
     }
 
     /**

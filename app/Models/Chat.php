@@ -2,17 +2,30 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Chat extends Model
 {
-    use HasFactory;
+    use HasFactory, MassPrunable;
 
     public const SENDER_MAHASISWA = 'mahasiswa';
 
     public const SENDER_DOSEN = 'dosen';
+
+    /** Retention window: chat rows are pruned after 548 days. */
+    public const RETENTION_DAYS = 548;
+
+    /**
+     * Rows eligible for pruning: older than the retention window.
+     */
+    public function prunable(): Builder
+    {
+        return static::where('created_at', '<=', now()->subDays(self::RETENTION_DAYS));
+    }
 
     /**
      * The attributes that are mass assignable.

@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -20,9 +22,21 @@ use Illuminate\Database\Eloquent\Model;
  */
 class RecommendationRun extends Model
 {
-    use HasFactory, BelongsToTenant;
+    use HasFactory, BelongsToTenant, MassPrunable;
+
+    /** Retention window: stage/run rows are pruned after 365 days. */
+    public const RETENTION_DAYS = 365;
 
     protected $table = 'recommendation_run';
+
+    /**
+     * Rows eligible for pruning: older than the retention window.
+     */
+    public function prunable(): Builder
+    {
+        return static::withoutGlobalScope('tenant')
+            ->where('created_at', '<=', now()->subDays(self::RETENTION_DAYS));
+    }
 
     public const STATUS_RUNNING = 'running';
 

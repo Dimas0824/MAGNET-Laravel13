@@ -3,13 +3,17 @@
 namespace App\Models;
 
 use App\Events\LowonganMagangCreatedOrUpdated;
+use App\Models\Concerns\Auditable;
 use App\Models\Concerns\BelongsToTenant;
+use App\Observers\AuditObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+#[ObservedBy(AuditObserver::class)]
 class LowonganMagang extends Model
 {
-    use HasFactory, BelongsToTenant;
+    use HasFactory, BelongsToTenant, Auditable;
 
     protected $table = 'lowongan_magang';
 

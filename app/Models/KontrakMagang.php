@@ -2,13 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Models\Concerns\BelongsToTenant;
+use App\Observers\AuditObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
+#[ObservedBy(AuditObserver::class)]
 class KontrakMagang extends Model
 {
-    use HasFactory, BelongsToTenant;
+    use HasFactory, BelongsToTenant, Auditable, SoftDeletes;
 
     protected $table = 'kontrak_magang';
 
@@ -18,6 +23,8 @@ class KontrakMagang extends Model
         'lowongan_magang_id',
         'waktu_awal',
         'waktu_akhir',
+        'status',
+        'keterangan',
     ];
 
     protected $casts = [

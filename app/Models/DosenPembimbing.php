@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Models\Concerns\BelongsToTenant;
+use App\Observers\AuditObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 
+#[ObservedBy(AuditObserver::class)]
 class DosenPembimbing extends UserBase
 {
-    use BelongsToTenant;
+    use BelongsToTenant, Auditable;
 
     protected $table = 'dosen_pembimbing';
 
