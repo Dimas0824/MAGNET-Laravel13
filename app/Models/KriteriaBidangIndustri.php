@@ -2,20 +2,18 @@
 
 namespace App\Models;
 
-use App\Models\BaseKriteriaModel;
-
 class KriteriaBidangIndustri extends BaseKriteriaModel
 {
-    protected $table = 'kriteria_bidang_industri';
+    protected const CRITERIA_KEY = MahasiswaKriteria::KEY_BIDANG_INDUSTRI;
 
     protected $fillable = [
-        'bidang_industri_id',
         'mahasiswa_id',
-        'rank',
-        'bobot'
+        'criteria_key',
+        'bidang_industri_id',
     ];
 
-    public function bidangIndustri() {
+    public function bidangIndustri()
+    {
         return $this->belongsTo(BidangIndustri::class);
     }
 }

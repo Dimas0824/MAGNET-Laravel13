@@ -1,8 +1,16 @@
 <?php
 
-use function Livewire\Volt\{layout, state, computed, mount, with, uses};
-use App\Models\{LokasiMagang, LowonganMagang, Perusahaan};
+use App\Models\LokasiMagang;
+use App\Models\LowonganMagang;
+use App\Models\Perusahaan;
 use Livewire\WithPagination;
+
+use function Livewire\Volt\computed;
+use function Livewire\Volt\layout;
+use function Livewire\Volt\mount;
+use function Livewire\Volt\state;
+use function Livewire\Volt\uses;
+use function Livewire\Volt\with;
 
 layout('components.layouts.user.main');
 uses([WithPagination::class]);
@@ -24,16 +32,16 @@ mount(function () {
 });
 
 $jobs = computed(function () {
-    $query = LowonganMagang::with(['perusahaan', 'pekerjaan', 'lokasi_magang'])->where('status', $this->filterByStatus);
+    $query = LowonganMagang::with(['perusahaan', 'pekerjaan', 'lokasiMagang'])->where('status', $this->filterByStatus);
 
-    // Apply search filter
-    if (!empty($this->searchQuery)) {
+    // Apply search filter (lowongan has no "nama" column; search by related
+    // company name and location).
+    if (! empty($this->searchQuery)) {
         $query->where(function ($q) {
-            $q->where('nama', 'LIKE', "%{$this->searchQuery}%")
-                ->orWhereHas('perusahaan', function ($company) {
-                    $company->where('nama', 'LIKE', "%{$this->searchQuery}%");
-                })
-                ->orWhereHas('lokasi_magang', function ($location) {
+            $q->orWhereHas('perusahaan', function ($company) {
+                $company->where('nama', 'LIKE', "%{$this->searchQuery}%");
+            })
+                ->orWhereHas('lokasiMagang', function ($location) {
                     $location->where('lokasi', 'LIKE', "%{$this->searchQuery}%");
                 });
         });
@@ -46,13 +54,16 @@ $jobs = computed(function () {
 
     // Apply location filter
     if ($this->filterByLocation !== 'all') {
-        $query->whereHas('lokasi_magang', function ($location) {
+        $query->whereHas('lokasiMagang', function ($location) {
             $location->where('kategori_lokasi', $this->filterByLocation);
         });
     }
 
-    // Apply sorting
-    $query->orderBy($this->sortBy, $this->sortDirection);
+    // Apply sorting (whitelist columns/direction to prevent orderBy injection).
+    $sortable = ['created_at', 'kuota', 'jenis_magang', 'open_remote', 'status'];
+    $sortBy = in_array($this->sortBy, $sortable, true) ? $this->sortBy : 'created_at';
+    $sortDirection = $this->sortDirection === 'asc' ? 'asc' : 'desc';
+    $query->orderBy($sortBy, $sortDirection);
 
     return $query->paginate(10);
 });
@@ -61,7 +72,7 @@ $selectJob = function ($jobId) {
     $this->isLoadingDetail = true;
 
     try {
-        $this->selectedJob = LowonganMagang::with(['perusahaan.bidangIndustri', 'pekerjaan', 'lokasi_magang', 'kontrakMagang.ulasanMagang.mahasiswa'])->findOrFail($jobId);
+        $this->selectedJob = LowonganMagang::with(['perusahaan.bidangIndustri', 'pekerjaan', 'lokasiMagang', 'kontrak_magang.ulasanMagang.mahasiswa'])->findOrFail($jobId);
     } catch (\Exception $e) {
         session()->flash('error', 'Lowongan tidak ditemukan.');
         $this->selectedJob = null;
@@ -262,7 +273,7 @@ $getFilterOptions = computed(function () {
 
                     <div class="divide-y divide-gray-100 max-h-[600px] overflow-y-auto">
                         @forelse($this->jobs as $job)
-                            <div onclick="window.location='{{ route('mahasiswa.detail-perusahaan') }}?id={{ $job->id }}'"
+                            <div onclick="window.location='{{ route('mahasiswa.detail-lowongan-magang', $job->id) }}'"
                                 role="button"
                                 class="p-4 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:border-blue-300 cursor-pointer transition-all duration-200 group border-r-2 border-r-transparent {{ $selectedJob?->id === $job->id ? 'bg-blue-50/50 border-r-blue-500' : '' }}">
                                 <div class="flex items-start gap-4">
@@ -293,7 +304,7 @@ $getFilterOptions = computed(function () {
                                                 <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
                                                     <div class="flex items-center gap-1">
                                                         <flux:icon.map-pin class="size-3" />
-                                                        {{ $job->lokasi_magang->lokasi ?? 'Remote' }}
+                                                        {{ $job->lokasiMagang->lokasi ?? 'Remote' }}
                                                     </div>
 
                                                     <div class="flex items-center gap-1">
@@ -404,7 +415,7 @@ $getFilterOptions = computed(function () {
                                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                                                     <div class="flex items-center gap-2 text-gray-600">
                                                         <flux:icon.map-pin class="size-4 text-gray-400" />
-                                                        {{ $selectedJob->lokasi_magang->lokasi ?? 'Remote' }}
+                                                        {{ $selectedJob->lokasiMagang->lokasi ?? 'Remote' }}
                                                     </div>
 
                                                     <div class="flex items-center gap-2 text-gray-600">

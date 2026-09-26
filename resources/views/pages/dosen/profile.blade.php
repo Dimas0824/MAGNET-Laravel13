@@ -188,10 +188,10 @@ $saveNewPassword = function () {
         }
 
         // Update password
-        $this->dosen->update([
+        $this->dosen->forceFill([
             'password' => Hash::make($this->new_password),
             'updated_at' => now(),
-        ]);
+        ])->save();
 
         $this->showModal('success', 'Password Berhasil Diubah', 'Password Anda telah berhasil diubah.');
         $this->isUpdatePassword = false;

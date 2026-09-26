@@ -7,7 +7,7 @@ use App\Models\UlasanMagang;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\UlasanMagang>
+ * @extends Factory<UlasanMagang>
  */
 class UlasanMagangFactory extends Factory
 {
@@ -20,9 +20,8 @@ class UlasanMagangFactory extends Factory
      */
     public function definition(): array
     {
-        static $kontrakMagangIds = null;
 
-        $kontrakMagangIds ??= KontrakMagang::orderBy('id')->pluck('id')->toArray();
+        $kontrakMagangIds = KontrakMagang::orderBy('id')->pluck('id')->toArray();
 
         return [
             'kontrak_magang_id' => $this->faker->randomElement($kontrakMagangIds),

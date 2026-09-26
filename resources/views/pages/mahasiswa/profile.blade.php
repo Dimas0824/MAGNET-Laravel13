@@ -77,6 +77,14 @@ state([
 mount(function () {
     $this->mahasiswa = auth('mahasiswa')->user();
 
+    $this->mahasiswa->loadMissing([
+        'kriteriaPekerjaan.pekerjaan',
+        'kriteriaBidangIndustri.bidangIndustri',
+        'kriteriaLokasiMagang.lokasiMagang',
+        'kriteriaJenisMagang',
+        'kriteriaOpenRemote',
+    ]);
+
     // Load personal data
     $this->nama = $this->mahasiswa->nama;
     $this->nim = $this->mahasiswa->nim;
@@ -88,7 +96,7 @@ mount(function () {
     // Load preference data dengan nama, bukan ID
     $this->bidang_industri = $this->mahasiswa->kriteriaBidangIndustri->bidangIndustri->nama;
     $this->jenis_magang = $this->mahasiswa->kriteriaJenisMagang->jenis_magang;
-    $this->lokasi_magang = $this->mahasiswa->kriteriaLokasiMagang->lokasi_magang->kategori_lokasi;
+        $this->lokasi_magang = $this->mahasiswa->kriteriaLokasiMagang->lokasiMagang->kategori_lokasi;
     $this->pekerjaan = $this->mahasiswa->kriteriaPekerjaan->pekerjaan->nama;
     $this->open_remote = $this->mahasiswa->kriteriaOpenRemote->open_remote;
 
@@ -244,7 +252,7 @@ $cancelUpdatePreference = function () {
     // Reset ke nilai asli menggunakan nama
     $this->bidang_industri = $this->mahasiswa->kriteriaBidangIndustri->bidangIndustri->nama;
     $this->jenis_magang = $this->mahasiswa->kriteriaJenisMagang->jenis_magang;
-    $this->lokasi_magang = $this->mahasiswa->kriteriaLokasiMagang->lokasi_magang->kategori_lokasi;
+        $this->lokasi_magang = $this->mahasiswa->kriteriaLokasiMagang->lokasiMagang->kategori_lokasi;
     $this->pekerjaan = $this->mahasiswa->kriteriaPekerjaan->pekerjaan->nama;
     $this->open_remote = $this->mahasiswa->kriteriaOpenRemote->open_remote;
 
@@ -290,34 +298,34 @@ $saveRanking = function () {
 
             switch ($criteria['key']) {
                 case 'pekerjaan':
-                    $this->mahasiswa->kriteriaPekerjaan()->update([
+                    $this->mahasiswa->kriteriaPekerjaan()->forceFill([
                         'rank' => $rank,
                         'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
-                    ]);
+                    ])->save();
                     break;
                 case 'bidang_industri':
-                    $this->mahasiswa->kriteriaBidangIndustri()->update([
+                    $this->mahasiswa->kriteriaBidangIndustri()->forceFill([
                         'rank' => $rank,
                         'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
-                    ]);
+                    ])->save();
                     break;
                 case 'lokasi_magang':
-                    $this->mahasiswa->kriteriaLokasiMagang()->update([
+                    $this->mahasiswa->kriteriaLokasiMagang()->forceFill([
                         'rank' => $rank,
                         'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
-                    ]);
+                    ])->save();
                     break;
                 case 'jenis_magang':
-                    $this->mahasiswa->kriteriaJenisMagang()->update([
+                    $this->mahasiswa->kriteriaJenisMagang()->forceFill([
                         'rank' => $rank,
                         'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
-                    ]);
+                    ])->save();
                     break;
                 case 'open_remote':
-                    $this->mahasiswa->kriteriaOpenRemote()->update([
+                    $this->mahasiswa->kriteriaOpenRemote()->forceFill([
                         'rank' => $rank,
                         'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
-                    ]);
+                    ])->save();
                     break;
             }
         }
@@ -361,10 +369,10 @@ $saveNewPassword = function () {
         }
 
         // Update password
-        $this->mahasiswa->update([
+        $this->mahasiswa->forceFill([
             'password' => Hash::make($this->new_password),
             'updated_at' => now(),
-        ]);
+        ])->save();
 
         $this->showModal('success', 'Password Berhasil Diubah', 'Password Anda telah berhasil diubah.');
         $this->isUpdatePassword = false;

@@ -5,7 +5,6 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Mahasiswa;
 use App\Models\KontrakMagang;
 use App\Models\DosenPembimbing;
-use Illuminate\Pagination\LengthAwarePaginator;
 use function Livewire\Volt\{layout, state, mount, computed, with};
 
 state([
@@ -26,36 +25,37 @@ mount(function () {
 $mahasiswaBimbingan = computed(function () {
     $dosenId = Auth::guard('dosen')->id();
 
-    $query = Mahasiswa::with(['kontrakMagang.lowonganMagang.perusahaan', 'kontrakMagang.logMagang', 'kontrakMagang.umpanBalikMagang'])->whereHas('kontrakMagang', function ($query) use ($dosenId) {
-        $query->where('dosen_id', $dosenId);
-    });
+    $query = Mahasiswa::query()
+        ->whereHas('kontrakMagang', function ($query) use ($dosenId) {
+            $query->where('dosen_id', $dosenId);
+        })
+        // Eager-load the first contract with its relations (no lazy N+1).
+        ->with([
+            'kontrakMagang' => function ($q) use ($dosenId) {
+                $q->where('dosen_id', $dosenId)
+                    ->with(['lowonganMagang.perusahaan', 'lowonganMagang.pekerjaan'])
+                    ->withCount([
+                        'logMagang as has_recent_log' => fn ($lq) => $lq->where('created_at', '>=', now()->subDays(7)),
+                        'umpanBalikMagang as has_feedback' => fn ($uq) => $uq->whereNotNull('komentar')->where('komentar', '!=', ''),
+                    ]);
+            },
+        ]);
 
-    // Tambahkan kondisi pencarian
-    if (!empty($this->search)) {
-        $searchTerm = '%' . $this->search . '%';
+    // Search
+    if (! empty($this->search)) {
+        $searchTerm = '%'.$this->search.'%';
         $query->where(function ($q) use ($searchTerm) {
-            $q->where('nama', 'like', $searchTerm)->orWhere('nim', 'like', $searchTerm)->orWhere('email', 'like', $searchTerm);
+            $q->where('nama', 'like', $searchTerm)
+                ->orWhere('nim', 'like', $searchTerm)
+                ->orWhere('email', 'like', $searchTerm);
         });
     }
 
-    $mahasiswaCollection = $query->orderBy('nama')->get();
-
-    return $mahasiswaCollection
-        ->map(function ($mahasiswa) {
+    return $query->orderBy('nama')
+        ->paginate($this->perPage, ['*'], 'page', $this->currentPage)
+        ->through(function ($mahasiswa) {
+            // whereHas guarantees at least one contract for this dosen.
             $kontrak = $mahasiswa->kontrakMagang->first();
-
-            if (!$kontrak) {
-                return null; // Skip jika tidak ada kontrak
-            }
-
-            // Check if log exists in the last 7 days
-            $hasRecentLog = $kontrak
-                ->logMagang()
-                ->where('created_at', '>=', now()->subDays(7))
-                ->exists();
-
-            // Check if feedback exists (has comment)
-            $hasFeedback = $kontrak->umpanBalikMagang()->whereNotNull('komentar')->where('komentar', '!=', '')->exists();
 
             return [
                 'id' => $mahasiswa->id,
@@ -67,35 +67,38 @@ $mahasiswaBimbingan = computed(function () {
                 'waktu_awal' => $kontrak->waktu_awal,
                 'waktu_akhir' => $kontrak->waktu_akhir,
                 'perusahaan_nama' => $kontrak->lowonganMagang->perusahaan->nama ?? '-',
-                'posisi_nama' => $kontrak->lowonganMagang->nama ?? '-',
-                'status_log' => $hasRecentLog ? 'Sudah dibaca' : 'Belum dibaca',
-                'status_feedback' => $hasFeedback ? 'Sudah diberikan' : 'Belum diberikan',
+                'posisi_nama' => $kontrak->lowonganMagang->pekerjaan->nama ?? '-',
+                'status_log' => ($kontrak->has_recent_log ?? 0) > 0 ? 'Sudah dibaca' : 'Belum dibaca',
+                'status_feedback' => ($kontrak->has_feedback ?? 0) > 0 ? 'Sudah diberikan' : 'Belum diberikan',
             ];
-        })
-        ->filter(); // Remove null values
+        });
 });
 
 $paginatedMahasiswa = computed(function () {
-    $mahasiswa = $this->mahasiswaBimbingan;
-    $total = $mahasiswa->count();
+    return $this->mahasiswaBimbingan;
+});
 
-    // Calculate pagination
-    $offset = ($this->currentPage - 1) * $this->perPage;
-    $items = $mahasiswa->slice($offset, $this->perPage);
+$bimbinganStats = computed(function () {
+    $dosenId = Auth::guard('dosen')->id();
 
-    return new LengthAwarePaginator($items, $total, $this->perPage, $this->currentPage, ['path' => request()->url()]);
+    $row = KontrakMagang::where('dosen_id', $dosenId)
+        ->join('mahasiswa', 'kontrak_magang.mahasiswa_id', '=', 'mahasiswa.id')
+        ->selectRaw('COUNT(*) as total')
+        ->selectRaw("SUM(CASE WHEN mahasiswa.status_magang = 'selesai magang' THEN 1 ELSE 0 END) as selesai")
+        ->first();
+
+    return [
+        'total' => (int) ($row->total ?? 0),
+        'selesai' => (int) ($row->selesai ?? 0),
+    ];
 });
 
 $totalMahasiswa = computed(function () {
-    $dosenId = Auth::guard('dosen')->id();
-
-    return KontrakMagang::where('dosen_id', $dosenId)->join('mahasiswa', 'kontrak_magang.mahasiswa_id', '=', 'mahasiswa.id')->count();
+    return $this->bimbinganStats['total'];
 });
 
 $mahasiswaSelesai = computed(function () {
-    $dosenId = Auth::guard('dosen')->id();
-
-    return KontrakMagang::where('dosen_id', $dosenId)->join('mahasiswa', 'kontrak_magang.mahasiswa_id', '=', 'mahasiswa.id')->where('mahasiswa.status_magang', 'selesai magang')->count();
+    return $this->bimbinganStats['selesai'];
 });
 
 $feedbackDiberikan = computed(function () {
@@ -227,7 +230,7 @@ $lihatDetail = function ($mahasiswaId) {
 
         @if ($search)
             <flux:badge color="blue" class="mt-2">
-                Hasil pencarian untuk "{{ $search }}" ({{ $this->mahasiswaBimbingan->count() }} ditemukan)
+                Hasil pencarian untuk "{{ $search }}" ({{ $this->mahasiswaBimbingan->total() }} ditemukan)
             </flux:badge>
         @endif
     </div>

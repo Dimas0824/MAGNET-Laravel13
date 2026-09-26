@@ -3,11 +3,12 @@
 namespace Database\Factories;
 
 use App\Models\BerkasPengajuanMagang;
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\Mahasiswa;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\BerkasPengajuanMagang>
+ * @extends Factory<BerkasPengajuanMagang>
  */
 class BerkasPengajuanMagangFactory extends Factory
 {
@@ -20,14 +21,14 @@ class BerkasPengajuanMagangFactory extends Factory
      */
     public function definition(): array
     {
-        static $mahasiswaIds = null;
-        $mahasiswaIds ??= Mahasiswa::orderBy('id')->pluck('id')->toArray();
+        $mahasiswaIds = Mahasiswa::orderBy('id')->pluck('id')->toArray();
 
         return [
+            'tenant_id' => BelongsToTenant::defaultTenantId(),
             'mahasiswa_id' => $this->faker->randomElement($mahasiswaIds),
-            'cv' => $this->faker->unique()->lexify('cv_?????') . '.pdf',
-            'transkrip_nilai' => $this->faker->unique()->lexify('transkrip_nilai_cv_?????') . '.pdf',
-            'portfolio' => $this->faker->unique()->optional()->lexify('portfolio_?????') . '.pdf'
+            'cv' => $this->faker->unique()->lexify('cv_?????').'.pdf',
+            'transkrip_nilai' => $this->faker->unique()->lexify('transkrip_nilai_cv_?????').'.pdf',
+            'portfolio' => $this->faker->unique()->optional()->lexify('portfolio_?????').'.pdf',
         ];
     }
 }

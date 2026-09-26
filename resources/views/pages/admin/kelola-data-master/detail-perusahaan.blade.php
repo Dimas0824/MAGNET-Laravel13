@@ -9,7 +9,7 @@ layout('components.layouts.user.main');
 state([
     'perusahaan',
     'nama',
-    'lokasi',
+    'lokasi_magang_id',
     'bidang_industri',
     'kategori',
     'rating',
@@ -23,7 +23,7 @@ state([
 mount(function (int $id) {
     $this->perusahaan = Perusahaan::findOrFail($id);
     $this->nama = $this->perusahaan->nama;
-    $this->lokasi = $this->perusahaan->lokasi;
+    $this->lokasi_magang_id = $this->perusahaan->lokasi_magang_id;
     $this->bidang_industri = $this->perusahaan->bidang_industri;
     $this->kategori = $this->perusahaan->kategori;
     $this->rating = $this->perusahaan->rating;
@@ -34,7 +34,7 @@ $editData = fn() => ($this->isEditing = !$this->isEditing);
 
 $updateData = function () {
     $this->perusahaan->nama = $this->nama;
-    $this->perusahaan->lokasi = $this->lokasi;
+    $this->perusahaan->lokasi_magang_id = $this->lokasi_magang_id;
     $this->perusahaan->bidang_industri = $this->bidang_industri;
     $this->perusahaan->kategori = $this->kategori;
 
@@ -140,12 +140,16 @@ $deleteData = function () {
                         <flux:field>
                             <flux:label>Lokasi</flux:label>
                             @if ($isEditing)
-                                <flux:input value="{{ $lokasi }}" wire:model="lokasi" />
+                                <flux:select placeholder="Pilih lokasi" wire:model="lokasi_magang_id">
+                                    @foreach (\App\Models\LokasiMagang::orderBy('kategori_lokasi')->get() as $lokasi)
+                                        <flux:select.option value="{{ $lokasi->id }}">{{ $lokasi->kategori_lokasi }} — {{ $lokasi->lokasi }}</flux:select.option>
+                                    @endforeach
+                                </flux:select>
                             @else
-                                <flux:input value="{{ $lokasi }}" wire:model="lokasi" readonly
+                                <flux:input value="{{ optional(\App\Models\LokasiMagang::find($lokasi_magang_id))->lokasi }}" readonly
                                     class="caret-transparent" />
                             @endif
-                            <flux:error name="lokasi" />
+                            <flux:error name="lokasi_magang_id" />
                         </flux:field>
 
                         <flux:field>

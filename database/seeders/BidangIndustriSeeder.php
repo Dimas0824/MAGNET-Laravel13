@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\BidangIndustri;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class BidangIndustriSeeder extends Seeder
@@ -28,12 +27,12 @@ class BidangIndustriSeeder extends Seeder
             'Teknologi',
             'Agrikultur',
             'Pariwisata',
-            'Keamanan'
+            'Keamanan',
         ];
 
         foreach ($sectors as $sector) {
             BidangIndustri::create([
-                'nama' => $sector
+                'nama' => $sector,
             ]);
         }
     }

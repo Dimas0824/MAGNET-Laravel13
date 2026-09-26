@@ -106,12 +106,12 @@ $completeInternship = function () {
 
             // Create or update the review
             if ($this->existing_review) {
-                $this->existing_review->update([
+                $this->existing_review->forceFill([
                     'rating' => $this->review_rating,
                     'komentar' => $this->review_komentar,
-                ]);
+                ])->save();
             } else {
-                UlasanMagang::create([
+                UlasanMagang::forceCreate([
                     'kontrak_magang_id' => $this->kontrak_magang->id,
                     'rating' => $this->review_rating,
                     'komentar' => $this->review_komentar,
@@ -170,7 +170,9 @@ $getInternshipInfo = function () {
     }
 
     $perusahaan = $this->kontrak_magang->lowonganMagang->perusahaan;
-    return "{$perusahaan->nama} - {$perusahaan->lokasi}";
+    $lokasi = $this->kontrak_magang->lowonganMagang->lokasiMagang->lokasi ?? '';
+
+    return trim("{$perusahaan->nama} - {$lokasi}", ' -');
 };
 
 $isCurrentlyDoingInternship = function () {

@@ -3,12 +3,17 @@
 namespace App\Models;
 
 use App\Events\LowonganMagangCreatedOrUpdated;
+use App\Models\Concerns\Auditable;
+use App\Models\Concerns\BelongsToTenant;
+use App\Observers\AuditObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+#[ObservedBy(AuditObserver::class)]
 class LowonganMagang extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToTenant, Auditable;
 
     protected $table = 'lowongan_magang';
 
@@ -19,7 +24,6 @@ class LowonganMagang extends Model
         'persyaratan',
         'jenis_magang',
         'open_remote',
-        'status',
         'lokasi_magang_id',
         'perusahaan_id',
     ];
@@ -34,12 +38,13 @@ class LowonganMagang extends Model
             $categorizeDataToPrepareAlternatives($lowonganMagang);
         });
 
-        static::updated(function (LowonganMagang $lowonganMagang) use($categorizeDataToPrepareAlternatives) {
+        static::updated(function (LowonganMagang $lowonganMagang) use ($categorizeDataToPrepareAlternatives) {
             $categorizeDataToPrepareAlternatives($lowonganMagang);
         });
     }
 
-    public function lokasi_magang() {
+    public function lokasiMagang()
+    {
         return $this->belongsTo(LokasiMagang::class);
     }
 

@@ -1,143 +1,94 @@
 <?php
 
 use function Livewire\Volt\{computed, layout};
-use Illuminate\Support\Facades\DB;
 use App\Models\FinalRankRecommendation;
-use App\Models\LowonganMagang;
-use App\Models\Perusahaan;
-use App\Models\Pekerjaan;
-use App\Models\BidangIndustri;
 use Carbon\Carbon;
 
 layout('components.layouts.user.main');
 
-$riwayat = computed(function () {
+$riwayatMaxRows = 200;
+
+$riwayatAlternative = computed(function () use ($riwayatMaxRows) {
     $mahasiswaId = auth('mahasiswa')->user()->id;
 
-    // Get the latest recommendation for each unique lowongan_magang_id per minute
-    $latestRecommendations = FinalRankRecommendation::where('mahasiswa_id', $mahasiswaId)
-        ->select([
-            'id',
-            'lowongan_magang_id',
-            'mahasiswa_id',
-            'avg_rank',
-            'rank',
-            'created_at',
-            DB::raw('DATE(created_at) as tanggal'),
-            DB::raw('TIME(created_at) as waktu_lengkap'),
-            DB::raw('HOUR(created_at) as jam'),
-            DB::raw('MINUTE(created_at) as menit'),
-            DB::raw('CONCAT(LPAD(HOUR(created_at), 2, "0"), ":", LPAD(MINUTE(created_at), 2, "0")) as waktu_formatted'),
-            DB::raw('CASE
-                WHEN HOUR(created_at) >= 6 AND HOUR(created_at) < 12 THEN "Pagi"
-                WHEN HOUR(created_at) >= 12 AND HOUR(created_at) < 17 THEN "Siang"
-                WHEN HOUR(created_at) >= 17 AND HOUR(created_at) < 21 THEN "Sore"
-                ELSE "Malam"
-            END as periode'),
-            // ROW_NUMBER partitioned by lowongan_magang_id AND minute to get latest per minute
-            DB::raw('ROW_NUMBER() OVER (PARTITION BY lowongan_magang_id, DATE(created_at), HOUR(created_at), MINUTE(created_at) ORDER BY created_at DESC) as rn_minute'),
-        ])
-        ->with(['lowonganMagang.perusahaan.bidangIndustri', 'lowonganMagang.pekerjaan', 'ratioSystem', 'referencePoint', 'fullMultiplicativeForm'])
-        ->havingRaw('rn_minute = 1') // Only get the latest record for each lowongan_magang_id per minute
-        ->orderBy('created_at', 'desc')
-        ->orderBy('rank', 'asc')
-        ->get()
-        ->groupBy(['tanggal', 'waktu_formatted']);
+    $recommendations = FinalRankRecommendation::query()
+        ->where('mahasiswa_id', $mahasiswaId)
+        ->latestPerLowongan()
+        ->with(['lowonganMagang.perusahaan.bidangIndustri', 'lowonganMagang.pekerjaan'])
+        ->orderByDesc('created_at')
+        ->limit($riwayatMaxRows)
+        ->get();
 
-    return $latestRecommendations;
-});
-
-// Alternative approach using subquery for better performance
-$riwayatAlternative = computed(function () {
-    $mahasiswaId = auth('mahasiswa')->user()->id;
-
-    // First, get the latest created_at for each lowongan_magang_id per minute
-    $latestDates = FinalRankRecommendation::where('mahasiswa_id', $mahasiswaId)
-        ->select(['lowongan_magang_id', DB::raw('DATE(created_at) as tanggal'), DB::raw('HOUR(created_at) as jam'), DB::raw('MINUTE(created_at) as menit'), DB::raw('MAX(created_at) as latest_date')])
-        ->groupBy(['lowongan_magang_id', 'tanggal', 'jam', 'menit']);
-
-    // Then get the full records for those latest dates
-    return FinalRankRecommendation::where('mahasiswa_id', $mahasiswaId)
-        ->joinSub($latestDates, 'latest', function ($join) {
-            $join->on('final_rank_recommendation.lowongan_magang_id', '=', 'latest.lowongan_magang_id')->on('final_rank_recommendation.created_at', '=', 'latest.latest_date');
+    return $recommendations
+        ->map(function ($row) {
+            $created = Carbon::parse($row->created_at);
+            $hour = (int) $created->format('G');
+            $periode = match (true) {
+                $hour >= 6 && $hour < 12 => 'Pagi',
+                $hour >= 12 && $hour < 17 => 'Siang',
+                $hour >= 17 && $hour < 21 => 'Sore',
+                default => 'Malam',
+            };
+            $row->setAttribute('tanggal', $created->format('Y-m-d'));
+            $row->setAttribute('waktu_lengkap', $created->format('H:i:s'));
+            $row->setAttribute('waktu_formatted', $created->format('H:i'));
+            $row->setAttribute('periode', $periode);
+            return $row;
         })
-        ->with(['lowonganMagang.perusahaan.bidangIndustri', 'lowonganMagang.pekerjaan', 'ratioSystem', 'referencePoint', 'fullMultiplicativeForm'])
-        ->select([
-            'final_rank_recommendation.id',
-            'final_rank_recommendation.lowongan_magang_id',
-            'final_rank_recommendation.mahasiswa_id',
-            'final_rank_recommendation.avg_rank',
-            'final_rank_recommendation.rank',
-            'final_rank_recommendation.created_at',
-            DB::raw('DATE(final_rank_recommendation.created_at) as tanggal'),
-            DB::raw('TIME(final_rank_recommendation.created_at) as waktu_lengkap'),
-            DB::raw('HOUR(final_rank_recommendation.created_at) as jam'),
-            DB::raw('MINUTE(final_rank_recommendation.created_at) as menit'),
-            DB::raw('CONCAT(LPAD(HOUR(final_rank_recommendation.created_at), 2, "0"), ":", LPAD(MINUTE(final_rank_recommendation.created_at), 2, "0")) as waktu_formatted'),
-            DB::raw('CASE
-                WHEN HOUR(final_rank_recommendation.created_at) >= 6 AND HOUR(final_rank_recommendation.created_at) < 12 THEN "Pagi"
-                WHEN HOUR(final_rank_recommendation.created_at) >= 12 AND HOUR(final_rank_recommendation.created_at) < 17 THEN "Siang"
-                WHEN HOUR(final_rank_recommendation.created_at) >= 17 AND HOUR(final_rank_recommendation.created_at) < 21 THEN "Sore"
-                ELSE "Malam"
-            END as periode'),
-        ])
-        ->orderBy('final_rank_recommendation.created_at', 'desc')
-        ->orderBy('final_rank_recommendation.rank', 'asc')
-        ->get()
+        ->sortByDesc(fn ($row) => $row->created_at)
         ->groupBy(['tanggal', 'waktu_formatted']);
 });
 
 $statistikRekomendasi = computed(function () {
     $mahasiswaId = auth('mahasiswa')->user()->id;
 
-    // Updated statistics to reflect unique lowongan count per minute
-    $latestDates = FinalRankRecommendation::where('mahasiswa_id', $mahasiswaId)
-        ->select(['lowongan_magang_id', DB::raw('DATE(created_at) as tanggal'), DB::raw('HOUR(created_at) as jam'), DB::raw('MINUTE(created_at) as menit'), DB::raw('MAX(created_at) as latest_date')])
-        ->groupBy(['lowongan_magang_id', 'tanggal', 'jam', 'menit']);
+    $base = FinalRankRecommendation::query()
+        ->where('mahasiswa_id', $mahasiswaId)
+        ->latestPerLowongan();
 
-    $uniqueRecommendations = FinalRankRecommendation::where('mahasiswa_id', $mahasiswaId)->joinSub($latestDates, 'latest', function ($join) {
-        $join->on('final_rank_recommendation.lowongan_magang_id', '=', 'latest.lowongan_magang_id')->on('final_rank_recommendation.created_at', '=', 'latest.latest_date');
-    });
+    $totalRekomendasi = (clone $base)->count();
+    $rekomendasiTerbaik = (clone $base)->min('rank');
+    $rataRataRank = (clone $base)->avg('avg_rank');
+
+    $perusahaanUnik = (clone $base)
+        ->join('lowongan_magang', 'final_rank_recommendation.lowongan_magang_id', '=', 'lowongan_magang.id')
+        ->distinct()
+        ->count('lowongan_magang.perusahaan_id');
 
     return [
-        'total_rekomendasi' => $uniqueRecommendations->count(),
-        'rekomendasi_terbaik' => $uniqueRecommendations->min('final_rank_recommendation.rank'),
-        'rata_rata_rank' => round($uniqueRecommendations->avg('final_rank_recommendation.avg_rank'), 1),
-        'perusahaan_unik' => $uniqueRecommendations->join('lowongan_magang', 'final_rank_recommendation.lowongan_magang_id', '=', 'lowongan_magang.id')->distinct('lowongan_magang.perusahaan_id')->count('lowongan_magang.perusahaan_id'),
+        'total_rekomendasi' => $totalRekomendasi,
+        'rekomendasi_terbaik' => $rekomendasiTerbaik,
+        'rata_rata_rank' => $rataRataRank !== null ? round((float) $rataRataRank, 1) : 0.0,
+        'perusahaan_unik' => $perusahaanUnik,
     ];
 });
 
+// Time period for an hour of day (06-12 Pagi, 12-17 Siang, 17-21 Sore, else Malam).
 // Helper function for time period styling
-function getTimePeriodStyle($periode)
-{
-    switch ($periode) {
-        case 'Pagi':
-            return [
-                'bgColor' => 'bg-amber-50 border-amber-200',
-                'textColor' => 'text-amber-700',
-                'iconColor' => 'text-amber-600',
-            ];
-        case 'Siang':
-            return [
-                'bgColor' => 'bg-orange-50 border-orange-200',
-                'textColor' => 'text-orange-700',
-                'iconColor' => 'text-orange-600',
-            ];
-        case 'Sore':
-            return [
-                'bgColor' => 'bg-purple-50 border-purple-200',
-                'textColor' => 'text-purple-700',
-                'iconColor' => 'text-purple-600',
-            ];
-        default:
-            // Malam
-            return [
-                'bgColor' => 'bg-blue-50 border-blue-200',
-                'textColor' => 'text-blue-700',
-                'iconColor' => 'text-blue-600',
-            ];
-    }
-}
+$getTimePeriodStyle = function ($periode) {
+    return match ($periode) {
+        'Pagi' => [
+            'bgColor' => 'bg-amber-50 border-amber-200',
+            'textColor' => 'text-amber-700',
+            'iconColor' => 'text-amber-600',
+        ],
+        'Siang' => [
+            'bgColor' => 'bg-orange-50 border-orange-200',
+            'textColor' => 'text-orange-700',
+            'iconColor' => 'text-orange-600',
+        ],
+        'Sore' => [
+            'bgColor' => 'bg-purple-50 border-purple-200',
+            'textColor' => 'text-purple-700',
+            'iconColor' => 'text-purple-600',
+        ],
+        default => [
+            'bgColor' => 'bg-blue-50 border-blue-200',
+            'textColor' => 'text-blue-700',
+            'iconColor' => 'text-blue-600',
+        ],
+    };
+};
 
 ?>
 
@@ -256,7 +207,7 @@ function getTimePeriodStyle($periode)
                                 @php
                                     $firstItem = $itemsAtTime->first();
                                     $periode = $firstItem->periode;
-                                    $styles = getTimePeriodStyle($periode);
+                                    $styles = $this->getTimePeriodStyle($periode);
                                     $actualCount = $itemsAtTime->count();
                                 @endphp
 

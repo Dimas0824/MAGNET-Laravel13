@@ -1,5 +1,9 @@
 <?php
 
+use App\Models\Admin;
+use App\Models\DosenPembimbing;
+use App\Models\Mahasiswa;
+
 return [
 
     /*
@@ -70,15 +74,15 @@ return [
     'providers' => [
         'mahasiswa' => [
             'driver' => 'eloquent',
-            'model' => App\Models\Mahasiswa::class,
+            'model' => Mahasiswa::class,
         ],
         'dosen' => [
             'driver' => 'eloquent',
-            'model' => App\Models\DosenPembimbing::class,
+            'model' => DosenPembimbing::class,
         ],
         'admin' => [
             'driver' => 'eloquent',
-            'model' => App\Models\Admin::class,
+            'model' => Admin::class,
         ],
     ],
 

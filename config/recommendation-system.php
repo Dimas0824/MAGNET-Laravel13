@@ -1,6 +1,5 @@
 <?php
 
-
 /**
  * Configuration for the Recommendation System
  *
@@ -11,7 +10,6 @@
  * - ROC (Rank Order Centroid): Used for assigning weights to criteria.
  * - MULTIMOORA (Multi-Objective Optimization by Ratio Analysis plus Full Multiplicative Form):
  *   Used for evaluating and ranking alternatives based on the weighted criteria.
- *
  */
 
 return [
@@ -20,20 +18,13 @@ return [
      * Data preprocessing configuration
      */
     'preprocessing' => [
-        'alternatives_categorized_path' => 'lowongan_magang/alternatives_categorized.json'
+        'alternatives_categorized_path' => 'lowongan_magang/alternatives_categorized.json',
     ],
 
     /**
      * ROC (Rank Order Centroid)
      */
     'roc' => [
-        'total_criteria' => 5
+        'total_criteria' => 5,
     ],
-
-    /**
-     * MULTIMOORA (Multi-Objective Optimization by Ratio Analysis plus Full Multiplicative Form)
-     */
-    'multimoora' => [
-        // multimoora config here
-    ]
 ];

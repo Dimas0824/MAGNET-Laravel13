@@ -1,9 +1,22 @@
 <?php
 
-use App\Models\{Perusahaan, KontrakMagang, LowonganMagang, BidangIndustri, Pekerjaan, LokasiMagang};
-use Illuminate\Support\Facades\{Auth, Log, Storage};
+use App\Models\BidangIndustri;
+use App\Models\KontrakMagang;
+use App\Models\LokasiMagang;
+use App\Models\LowonganMagang;
+use App\Models\Pekerjaan;
+use App\Models\Perusahaan;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Livewire\WithFileUploads;
-use function Livewire\Volt\{state, mount, rules, uses, computed, updated};
+
+use function Livewire\Volt\computed;
+use function Livewire\Volt\mount;
+use function Livewire\Volt\rules;
+use function Livewire\Volt\state;
+use function Livewire\Volt\updated;
+use function Livewire\Volt\uses;
 
 uses(WithFileUploads::class);
 
@@ -18,6 +31,7 @@ state([
     'surat_izin_magang' => null,
     'partner_companies' => [],
     'available_lowongan' => collect(),
+    'bidang_industri_list' => [],
     'mahasiswa' => null,
     'existing_contract' => null,
     'can_register' => false,
@@ -37,8 +51,9 @@ mount(function () {
     try {
         $this->mahasiswa = Auth::guard('mahasiswa')->user();
 
-        if (!$this->mahasiswa) {
+        if (! $this->mahasiswa) {
             session()->flash('error', 'Anda harus login sebagai mahasiswa.');
+
             return;
         }
 
@@ -50,11 +65,13 @@ mount(function () {
 
         // Determine if student can register for new internship
         // Allow registration if no contract exists, or previous contract was rejected/completed
-        $this->can_register = !$this->existing_contract || in_array($this->existing_contract->status, ['ditolak', 'selesai']) || $this->mahasiswa->status_magang === 'belum magang' || $this->mahasiswa->status_magang === 'selesai magang';
+        $this->can_register = ! $this->existing_contract || in_array($this->existing_contract->status, ['ditolak', 'selesai']) || $this->mahasiswa->status_magang === 'belum magang' || $this->mahasiswa->status_magang === 'selesai magang';
+
+        $this->bidang_industri_list = BidangIndustri::orderBy('nama')->pluck('nama')->all();
 
         if ($this->can_register) {
             $this->partner_companies = Perusahaan::where('kategori', 'mitra')
-                ->whereHas('lowongan_magang', function ($query) {
+                ->whereHas('lowonganMagang', function ($query) {
                     $query->where('status', 'buka');
                 })
                 ->get();
@@ -76,15 +93,16 @@ updated([
 
 $loadLowongan = function () {
     try {
-        if (!$this->selected_company_id) {
+        if (! $this->selected_company_id) {
             $this->available_lowongan = collect();
             $this->selected_lowongan_id = '';
+
             return;
         }
 
         $this->available_lowongan = LowonganMagang::where('perusahaan_id', $this->selected_company_id)
             ->where('status', 'buka')
-            ->with(['pekerjaan', 'lokasi_magang'])
+            ->with(['pekerjaan', 'lokasiMagang'])
             ->get();
 
         $this->selected_lowongan_id = '';
@@ -101,13 +119,15 @@ $loadLowongan = function () {
 
 $save = function () {
     try {
-        if (!$this->mahasiswa) {
+        if (! $this->mahasiswa) {
             session()->flash('error', 'Data mahasiswa tidak ditemukan.');
+
             return;
         }
 
-        if (!$this->can_register) {
+        if (! $this->can_register) {
             session()->flash('error', 'Anda sudah memiliki pendaftaran magang yang sedang diproses atau aktif.');
+
             return;
         }
 
@@ -120,6 +140,7 @@ $save = function () {
 
         if ($existingContract) {
             session()->flash('error', 'Anda sudah memiliki pendaftaran magang yang sedang diproses atau aktif.');
+
             return;
         }
 
@@ -128,8 +149,9 @@ $save = function () {
         if ($this->company_type === 'partner') {
             $selectedLowongan = LowonganMagang::where('id', $this->selected_lowongan_id)->where('perusahaan_id', $this->selected_company_id)->where('status', 'buka')->first();
 
-            if (!$selectedLowongan) {
+            if (! $selectedLowongan) {
                 session()->flash('error', 'Lowongan magang tidak ditemukan atau tidak valid.');
+
                 return;
             }
 
@@ -145,7 +167,7 @@ $save = function () {
             $bidangIndustri = BidangIndustri::firstOrCreate(['nama' => $this->bidang_industri]);
 
             // Create new company
-            $newCompany = Perusahaan::create([
+            $newCompany = Perusahaan::forceCreate([
                 'nama' => $this->company_name,
                 'bidang_industri_id' => $bidangIndustri->id,
                 'lokasi' => $this->company_address,
@@ -161,7 +183,7 @@ $save = function () {
             ]);
 
             // Create lowongan magang
-            $magang = LowonganMagang::create([
+            $magang = LowonganMagang::forceCreate([
                 'kuota' => 1,
                 'pekerjaan_id' => $pekerjaan->id,
                 'deskripsi' => "Program magang di {$this->company_name}",
@@ -178,7 +200,7 @@ $save = function () {
         }
 
         // Create contract with pending status (without dosen assignment)
-        $kontrak = KontrakMagang::create([
+        $kontrak = KontrakMagang::forceCreate([
             'mahasiswa_id' => $this->mahasiswa->id,
             'dosen_id' => null, // Will be assigned by admin
             'lowongan_magang_id' => $lowongan_magang_id,
@@ -209,13 +231,13 @@ $save = function () {
             'trace' => $e->getTraceAsString(),
         ]);
 
-        session()->flash('error', 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage());
+        session()->flash('error', 'Terjadi kesalahan saat menyimpan data: '.$e->getMessage());
     }
 };
 
 $getInternshipInfo = function () {
     try {
-        if (!$this->mahasiswa) {
+        if (! $this->mahasiswa) {
             return 'Tidak diketahui';
         }
 
@@ -226,12 +248,15 @@ $getInternshipInfo = function () {
 
         if ($kontrak && $kontrak->lowonganMagang && $kontrak->lowonganMagang->perusahaan) {
             $perusahaan = $kontrak->lowonganMagang->perusahaan;
-            return "{$perusahaan->nama} - {$perusahaan->lokasi}";
+            $lokasi = $kontrak->lowonganMagang->lokasiMagang->lokasi ?? '';
+
+            return trim("{$perusahaan->nama} - {$lokasi}", ' -');
         }
 
         return 'Lokasi magang belum ditentukan';
     } catch (\Exception $e) {
         Log::error('Error getting internship info', ['error' => $e->getMessage()]);
+
         return 'Error mengambil informasi magang';
     }
 };
@@ -413,7 +438,7 @@ $getStatusBadgeClass = function ($status) {
                             <div>
                                 <p class="text-sm text-gray-600">Lokasi</p>
                                 <p class="font-semibold text-gray-900">
-                                    {{ $existing_contract->lowonganMagang->perusahaan->lokasi }}</p>
+                                    {{ $existing_contract->lowonganMagang->lokasiMagang->lokasi ?? '-' }}</p>
                             </div>
                         @endif
                         @if ($existing_contract->dosenPembimbing)
@@ -511,8 +536,8 @@ $getStatusBadgeClass = function ($status) {
                                                     @else
                                                         Lowongan Magang
                                                     @endif
-                                                    @if ($lowongan->lokasi_magang)
-                                                        - {{ $lowongan->lokasi_magang->lokasi }}
+                                                    @if ($lowongan->lokasiMagang)
+                                                        - {{ $lowongan->lokasiMagang->lokasi }}
                                                     @endif
                                                 </option>
                                             @endforeach
@@ -551,12 +576,12 @@ $getStatusBadgeClass = function ($status) {
                                                     <p class="text-blue-900">
                                                         {{ $selectedJob->open_remote == 'ya' ? 'Ya' : 'Tidak' }}</p>
                                                 </div>
-                                                @if ($selectedJob->lokasi_magang)
+                                                @if ($selectedJob->lokasiMagang)
                                                     <div class="md:col-span-2">
                                                         <p class="text-blue-700 font-medium">Lokasi</p>
                                                         <p class="text-blue-900">
-                                                            {{ $selectedJob->lokasi_magang->kategori_lokasi }} -
-                                                            {{ $selectedJob->lokasi_magang->lokasi }}</p>
+                                                            {{ $selectedJob->lokasiMagang->kategori_lokasi }} -
+                                                            {{ $selectedJob->lokasiMagang->lokasi }}</p>
                                                     </div>
                                                 @endif
                                                 @if ($selectedJob->deskripsi)
@@ -646,8 +671,8 @@ $getStatusBadgeClass = function ($status) {
                                     <x-flux::select wire:model="bidang_industri" placeholder="Pilih bidang industri"
                                         class="mt-1">
                                         <option value="">Pilih bidang industri</option>
-                                        @foreach (BidangIndustri::orderBy('nama')->get() as $bidang)
-                                            <option value="{{ $bidang->nama }}">{{ $bidang->nama }}</option>
+                                        @foreach ($bidang_industri_list as $bidang)
+                                            <option value="{{ $bidang }}">{{ $bidang }}</option>
                                         @endforeach
                                     </x-flux::select>
                                     <x-flux::error for="bidang_industri" />

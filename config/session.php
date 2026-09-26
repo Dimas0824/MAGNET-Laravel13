@@ -50,6 +50,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Session Serialization
+    |--------------------------------------------------------------------------
+    |
+    | This value determines the serialization strategy used for session data.
+    | Laravel 13's default skeleton uses "json" to harden against PHP object
+    | deserialization gadget-chain attacks, but switching an existing app from
+    | "php" to "json" invalidates all active sessions. This application does
+    | not store PHP objects in the session, so we explicitly keep "php" to
+    | preserve active sessions during the upgrade.
+    |
+    | Supported: "php", "json"
+    |
+    */
+
+    'serialization' => 'php',
+
+    /*
+    |--------------------------------------------------------------------------
     | Session File Location
     |--------------------------------------------------------------------------
     |

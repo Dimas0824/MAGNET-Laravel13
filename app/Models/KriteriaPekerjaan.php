@@ -2,18 +2,14 @@
 
 namespace App\Models;
 
-use App\Models\Pekerjaan;
-use App\Models\BaseKriteriaModel;
-
 class KriteriaPekerjaan extends BaseKriteriaModel
 {
-    protected $table = 'kriteria_pekerjaan';
+    protected const CRITERIA_KEY = MahasiswaKriteria::KEY_PEKERJAAN;
 
     protected $fillable = [
-        'pekerjaan_id',
         'mahasiswa_id',
-        'rank',
-        'bobot'
+        'criteria_key',
+        'pekerjaan_id',
     ];
 
     public function pekerjaan()

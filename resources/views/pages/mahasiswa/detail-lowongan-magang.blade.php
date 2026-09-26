@@ -1,14 +1,21 @@
 <?php
 
-use function Livewire\Volt\{layout, state, computed, mount, with, uses};
 use App\Models\LowonganMagang;
-use App\Models\UlasanMagang;
 use App\Models\Mahasiswa;
+use App\Models\UlasanMagang;
+
+use function Livewire\Volt\computed;
+use function Livewire\Volt\layout;
+use function Livewire\Volt\mount;
+use function Livewire\Volt\state;
+use function Livewire\Volt\uses;
+use function Livewire\Volt\with;
 
 layout('components.layouts.user.main');
 
 state([
     'lowongan',
+    'lowonganId' => null,
 
     'isDataNotFound' => false,
     'isSaved' => false,
@@ -16,8 +23,10 @@ state([
 ]);
 
 mount(function (int $id) {
+    $this->lowonganId = $id;
+
     try {
-        $this->lowongan = LowonganMagang::with(['perusahaan.bidangIndustri', 'pekerjaan', 'lokasi_magang'])
+        $this->lowongan = LowonganMagang::with(['perusahaan.bidangIndustri', 'pekerjaan', 'lokasiMagang'])
             ->findOrFail($id);
     } catch (\Exception $e) {
         $this->isDataNotFound = true;
@@ -26,7 +35,7 @@ mount(function (int $id) {
 
 $ulasanMagang = computed(function () {
     try {
-        if (!$this->lowonganId) {
+        if (! $this->lowonganId) {
             return collect();
         }
 
@@ -45,7 +54,7 @@ $ulasanMagang = computed(function () {
 $lowonganSerupa = computed(function () {
     try {
         $currentLowongan = $this->lowongan;
-        if (!$currentLowongan) {
+        if (! $currentLowongan) {
             return collect();
         }
 
@@ -64,18 +73,20 @@ $saveJob = function () {
     $this->isLoading = true;
 
     try {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             session()->flash('error', 'Silakan login terlebih dahulu.');
+
             return;
         }
 
-        if (!$this->lowonganId) {
+        if (! $this->lowonganId) {
             session()->flash('error', 'Lowongan tidak valid.');
+
             return;
         }
 
         // Implement save job logic here
-        $this->isSaved = !$this->isSaved;
+        $this->isSaved = ! $this->isSaved;
         session()->flash('success', $this->isSaved ? 'Lowongan berhasil disimpan!' : 'Lowongan dihapus dari simpanan!');
     } catch (\Exception $e) {
         session()->flash('error', 'Terjadi kesalahan saat menyimpan lowongan.');
@@ -86,7 +97,7 @@ $saveJob = function () {
 
 $formatCurrency = function ($amount) {
     try {
-        return 'Rp ' . number_format($amount, 0, ',', '.');
+        return 'Rp '.number_format($amount, 0, ',', '.');
     } catch (\Exception $e) {
         return 'Rp 0';
     }
@@ -176,7 +187,7 @@ $getRemoteLabel = function ($remote) {
 
                                     <div class="flex items-center text-gray-600 gap-2">
                                         <flux:icon.map-pin class="size-5 text-gray-400" />
-                                        <span>{{ $lowongan->lokasi_magang->lokasi }}</span>
+                                        <span>{{ $lowongan->lokasiMagang->lokasi }}</span>
                                     </div>
 
                                     <div class="flex items-center text-gray-600 gap-2">
@@ -403,7 +414,7 @@ $getRemoteLabel = function ($remote) {
                                             : null;
                                     @endphp
 
-                                    <div onclick="window.location='{{ route('mahasiswa.detail-perusahaan', ['id' => $item->id]) }}'"
+                                    <div onclick="window.location='{{ route('mahasiswa.profil-perusahaan', $item->perusahaan_id) }}'"
                                         role="button"
                                         class="flex items-center gap-3 p-3 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 hover:cursor-pointer hover:shadow-sm border border-gray-100">
 
@@ -429,7 +440,7 @@ $getRemoteLabel = function ($remote) {
                                             </p>
                                             <div class="flex items-center justify-between mt-1">
                                                 <span class="text-xs text-gray-500">
-                                                    {{ $item->perusahaan->lokasi ?? 'Lokasi tidak tersedia' }}
+                                                    {{ $item->lokasiMagang->lokasi ?? 'Lokasi tidak tersedia' }}
                                                 </span>
                                                 @if ($item->perusahaan->rating)
                                                     <div class="flex items-center gap-1 text-xs">

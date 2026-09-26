@@ -17,6 +17,7 @@ state([
     'statusInsertSingleData' => '',
     'storePerusahaanNama' => null,
     'storePerusahaanLokasi' => null,
+    'storePerusahaanLokasiMagangId' => null,
     'storePerusahaanBidangIndustri' => null,
     'storePerusahaanKategori' => null
 ]);
@@ -45,7 +46,7 @@ with(function () {
 $storeSingleData = function (): void {
     $perusahaan = Perusahaan::create([
         'nama' => $this->storePerusahaanNama,
-        'lokasi' => $this->storePerusahaanLokasi,
+        'lokasi_magang_id' => $this->storePerusahaanLokasiMagangId,
         'bidang_industri' => $this->storePerusahaanBidangIndustri,
         'kategori' => $this->storePerusahaanKategori,
 
@@ -164,8 +165,12 @@ $goToNextPage = fn() => $this->nextPage();
                 <flux:heading size="lg">Tambahkan data perusahaan baru</flux:heading>
             </div>
 
-            <flux:input label="Nama" placeholder="Nama perusahaan" wire:model="storePerusahaanNama" />
-            <flux:input label="Lokasi" placeholder="Lokasi" wire:model="storePerusahaanLokasi" />
+                            <flux:input label="Nama" placeholder="Nama perusahaan" wire:model="storePerusahaanNama" />
+                            <flux:select label="Lokasi" placeholder="Pilih lokasi" wire:model="storePerusahaanLokasiMagangId">
+                                @foreach (\App\Models\LokasiMagang::orderBy('kategori_lokasi')->get() as $lokasi)
+                                    <flux:select.option value="{{ $lokasi->id }}">{{ $lokasi->kategori_lokasi }} — {{ $lokasi->lokasi }}</flux:select.option>
+                                @endforeach
+                            </flux:select>
 
             <flux:field>
                 <flux:label>Bidang Industri</flux:label>

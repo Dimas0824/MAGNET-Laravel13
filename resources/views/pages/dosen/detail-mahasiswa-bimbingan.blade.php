@@ -44,8 +44,8 @@ $mahasiswaDetail = computed(function () {
     $endDate = Carbon::parse($data->waktu_akhir);
     $today = Carbon::today();
 
-    $totalDuration = $startDate->diffInDays($endDate);
-    $remainingDays = $today->diffInDays($endDate, false); // false allows negative values
+    $totalDuration = (int) $startDate->diffInDays($endDate);
+    $remainingDays = (int) $today->diffInDays($endDate, false); // false allows negative values
 
     return [
         'id' => $data->id,

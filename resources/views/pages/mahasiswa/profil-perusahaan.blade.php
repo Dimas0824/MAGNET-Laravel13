@@ -8,40 +8,50 @@ layout('components.layouts.user.main');
 
 state([
     'perusahaan',
+    'perusahaanId' => null,
+    'lowonganId' => null,
+    'totalUlasan' => 0,
+    'rataRating' => 0,
     'isDataNotFound' => false
 ]);
 
 mount(function (int $id) {
+    $this->perusahaanId = $id;
+
     try {
         $this->perusahaan = Perusahaan::findOrFail($id);
     } catch (\Exception $e) {
         $this->isDataNotFound = true;
+
+        return;
     }
+
+    // Compute rating statistics once on mount (no side effects in getters).
+    $ulasanData = UlasanMagang::whereHas('kontrakMagang.lowonganMagang', function ($query) use ($id) {
+        $query->where('perusahaan_id', $id);
+    })->get();
+
+    $this->totalUlasan = $ulasanData->count();
+    $this->rataRating = $this->totalUlasan > 0 ? round($ulasanData->avg('rating'), 1) : 0;
 });
 
-$calculateRatingStats = function () {
-    try {
-        $ulasanData = UlasanMagang::whereHas('kontrakMagang.lowonganMagang', function ($query) {
-            $query->where('perusahaan_id', $this->perusahaanId);
-        })->get();
-
-        $this->totalUlasan = $ulasanData->count();
-
-        if ($this->totalUlasan > 0) {
-            $this->rataRating = round($ulasanData->avg('rating'), 1);
-            $this->perusahaan->update(['rating' => $this->rataRating]);
-        } else {
-            $this->rataRating = 0;
-        }
-    } catch (\Exception $e) {
-        $this->totalUlasan = 0;
-        $this->rataRating = 0;
+// Location now comes from the lokasi_magang lookup via the company's openings
+// (perusahaan.lokasi free text was dropped in P5-T4).
+$lokasiLabel = computed(function () {
+    if (! $this->perusahaan) {
+        return null;
     }
-};
 
-$lowonganLainnya = computed(function () {
-    try {
-        if (!$this->perusahaan) {
+    return LowonganMagang::where('perusahaan_id', $this->perusahaan->id)
+        ->with('lokasiMagang')
+        ->get()
+        ->map(fn ($l) => $l->lokasiMagang->lokasi ?? null)
+        ->filter()
+        ->first();
+});
+
+$lowonganLainnya = computed(function () {    try {
+        if (! $this->perusahaan) {
             return collect();
         }
 
@@ -49,7 +59,7 @@ $lowonganLainnya = computed(function () {
             ->lowonganMagang()
             ->with(['pekerjaan', 'lokasiMagang'])
             ->where('status', 'buka')
-            ->where('id', '!=', $this->lowonganId)
+            ->when($this->lowonganId, fn ($q) => $q->where('id', '!=', $this->lowonganId))
             ->take(3)
             ->get();
     } catch (\Exception $e) {
@@ -85,7 +95,7 @@ $lowonganLainnya = computed(function () {
                             <div class="space-y-2">
                                 <div class="flex items-center text-gray-600">
                                     <flux:icon.map-pin class="mr-2 h-4 w-4" />
-                                    <span>{{ $perusahaan->lokasi }}</span>
+                                    <span>{{ $this->lokasiLabel ?? 'Lokasi tidak tersedia' }}</span>
                                 </div>
                                 <div class="flex items-center text-gray-600">
                                     <flux:icon.building class="mr-2 h-4 w-4" />
@@ -112,12 +122,6 @@ $lowonganLainnya = computed(function () {
                                 <flux:icon.star class="h-6 w-6 text-yellow-600" />
                             </div>
                             <h4 class="font-semibold text-gray-900">
-                                @php
-                                    $totalUlasan = 20;
-                                    $rataRating = 3.2;
-                                @endphp
-
-
                                 @if ($totalUlasan > 0)
                                     {{ $rataRating }}/5
                                 @else

@@ -2,12 +2,13 @@
 
 namespace Database\Factories;
 
-use Illuminate\Database\Eloquent\Factories\Factory;
 use App\Models\Admin;
+use App\Models\Concerns\BelongsToTenant;
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Admin>
+ * @extends Factory<Admin>
  */
 class AdminFactory extends Factory
 {
@@ -21,9 +22,16 @@ class AdminFactory extends Factory
     public function definition(): array
     {
         return [
+            'tenant_id' => BelongsToTenant::defaultTenantId(),
             'nama' => $this->faker->name(),
             'nip' => (string) $this->faker->unique()->numerify('##################'),
-            'password' => Hash::make('admin123'),
         ];
+    }
+
+    public function configure()
+    {
+        return $this->afterMaking(function ($model) {
+            $model->forceFill(['password' => Hash::make('admin123')]);
+        });
     }
 }

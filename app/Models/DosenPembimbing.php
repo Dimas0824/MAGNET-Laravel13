@@ -2,17 +2,23 @@
 
 namespace App\Models;
 
-use App\Models\KontrakMagang;
-use App\Models\UserBase;
+use App\Models\Concerns\Auditable;
+use App\Models\Concerns\BelongsToTenant;
+use App\Observers\AuditObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 
+#[ObservedBy(AuditObserver::class)]
 class DosenPembimbing extends UserBase
 {
+    use BelongsToTenant, Auditable;
+
     protected $table = 'dosen_pembimbing';
 
     protected $fillable = [
+        'tenant_id',
+        'user_id',
         'nama',
         'nidn',
-        'password',
         'jenis_kelamin',
         'foto',
     ];
@@ -28,6 +34,14 @@ class DosenPembimbing extends UserBase
     public function getRoleName(): string
     {
         return 'dosen';
+    }
+
+    /**
+     * The registry identity backing this dosen row.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 
     public function kontrakMagang()

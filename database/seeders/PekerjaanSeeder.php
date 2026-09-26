@@ -2,9 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
 use App\Models\Pekerjaan;
+use Illuminate\Database\Seeder;
 
 class PekerjaanSeeder extends Seeder
 {
@@ -34,12 +33,12 @@ class PekerjaanSeeder extends Seeder
             'Systems Administrator',
             'Database Administrator',
             'Product Manager',
-            'QA Engineer'
+            'QA Engineer',
         ];
 
         foreach ($jobs as $job) {
             Pekerjaan::create([
-                'nama' => $job
+                'nama' => $job,
             ]);
         }
     }

@@ -2,24 +2,27 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Pekerjaan extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToTenant;
 
     protected $table = 'pekerjaan';
 
     protected $fillable = [
-        'nama'
+        'nama',
     ];
 
-    public function kriteriPekerjaan() {
+    public function kriteriaPekerjaan()
+    {
         return $this->hasMany(KriteriaPekerjaan::class);
     }
 
-    public function lowonganMagang() {
+    public function lowonganMagang()
+    {
         return $this->hasMany(LowonganMagang::class);
     }
 }

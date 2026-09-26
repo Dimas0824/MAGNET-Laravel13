@@ -10,23 +10,28 @@ window.axios = axios;
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
 /**
- * Echo exposes an expressive API for subscribing to channels and listening
- * for events that are broadcast by Laravel. Echo and event broadcasting
- * allows your team to easily build robust real-time web applications.
+ * Laravel Echo + Reverb: real-time chat over websockets (replaces polling).
+ *
+ * The VITE_REVERB_* values are injected at build time (see Dockerfile stage 2
+ * and compose.yaml build.args). If they are absent the bundle would silently
+ * fall back to a WSS connection against a plain-ws port, which fails and makes
+ * chat look like it needs a refresh. Defaults here match the local compose
+ * stack (plain ws on 8080).
  */
+import Echo from 'laravel-echo';
+import Pusher from 'pusher-js';
 
-// import Echo from 'laravel-echo';
+window.Pusher = Pusher;
 
-// import Pusher from 'pusher-js';
-// window.Pusher = Pusher;
+const reverbScheme = import.meta.env.VITE_REVERB_SCHEME ?? 'http';
+const reverbPort = Number(import.meta.env.VITE_REVERB_PORT ?? 8080);
 
-// window.Echo = new Echo({
-//     broadcaster: 'pusher',
-//     key: import.meta.env.VITE_PUSHER_APP_KEY,
-//     cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER ?? 'mt1',
-//     wsHost: import.meta.env.VITE_PUSHER_HOST ? import.meta.env.VITE_PUSHER_HOST : `ws-${import.meta.env.VITE_PUSHER_APP_CLUSTER}.pusher.com`,
-//     wsPort: import.meta.env.VITE_PUSHER_PORT ?? 80,
-//     wssPort: import.meta.env.VITE_PUSHER_PORT ?? 443,
-//     forceTLS: (import.meta.env.VITE_PUSHER_SCHEME ?? 'https') === 'https',
-//     enabledTransports: ['ws', 'wss'],
-// });
+window.Echo = new Echo({
+    broadcaster: 'reverb',
+    key: import.meta.env.VITE_REVERB_APP_KEY,
+    wsHost: import.meta.env.VITE_REVERB_HOST ?? window.location.hostname,
+    wsPort: reverbPort,
+    wssPort: reverbPort,
+    forceTLS: reverbScheme === 'https',
+    enabledTransports: ['ws', 'wss'],
+});
