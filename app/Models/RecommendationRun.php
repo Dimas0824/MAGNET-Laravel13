@@ -92,12 +92,31 @@ class RecommendationRun extends Model
     }
 
     /**
+     * Number of decimal places a ROC weight is canonicalized to before hashing.
+     *
+     * This MUST equal the fractional digits of the `mahasiswa_kriteria.bobot`
+     * column (`decimal(6,3)` after P4b). The pipeline reads `bobot` from the DB
+     * and Eloquent returns the raw column string, whose formatting depends on
+     * the column's scale: `decimal(30,15)` yields `0.456666666666670` while
+     * `decimal(6,3)` yields `0.457`. Hashing that raw string would make the key
+     * a function of storage precision, so a pure decimal resize would silently
+     * orphan every prior run.
+     */
+    public const WEIGHT_SCALE = 3;
+
+    /**
      * Deterministic fingerprint of a pipeline's inputs.
      *
      * Derived only from data that determines the ranking (the encoded
      * alternative set for this mahasiswa plus the criteria weights), so the same
      * inputs always map to the same key while any material change produces a new
      * one. Sorted before hashing so a different row order is not a new run.
+     *
+     * Weights are canonicalized to a fixed `WEIGHT_SCALE`-decimal string via
+     * `number_format`, so the key is PRECISION-INDEPENDENT: the same logical
+     * weight hashes identically whether the DB column is (30,15) or (6,3). This
+     * is what lets P4b resize `bobot` without a run_key drift. The trailing-zero
+     * form is chosen to match MySQL's own `decimal(6,3)` rendering exactly.
      *
      * @param  array<int, array<string, mixed>>  $encodedAlternatives
      * @param  array<string, float|int|string>  $weights
@@ -117,12 +136,18 @@ class RecommendationRun extends Model
             ->values()
             ->all();
 
-        ksort($weights);
+        $canonicalWeights = [];
+
+        foreach ($weights as $criterion => $weight) {
+            $canonicalWeights[$criterion] = number_format((float) $weight, self::WEIGHT_SCALE, '.', '');
+        }
+
+        ksort($canonicalWeights);
 
         return hash('sha256', json_encode([
             'mahasiswa_id' => $mahasiswaId,
             'alternatives' => $alternatives,
-            'weights' => $weights,
+            'weights' => $canonicalWeights,
         ]));
     }
 }

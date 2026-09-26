@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * P3-T2: the backfill copies every criterion row into mahasiswa_kriteria with
- * the bobot string preserved VERBATIM (the run_key parity gate hashes it).
+ * the bobot VALUE preserved (resized to the canonical (6,3) form in P4b; the
+ * run_key parity gate is precision-independent, so the value is what matters).
  *
  * P3-T4 note: `mahasiswaDenganPreferensi()` now writes straight to the
  * collapsed table, so this test seeds the LEGACY `kriteria_*` tables directly
@@ -88,7 +89,7 @@ it('backfills one mahasiswa_kriteria row per source criterion row', function () 
         ->toBe(['bidang_industri', 'jenis_magang', 'lokasi_magang', 'open_remote', 'pekerjaan']);
 });
 
-it('copies bobot verbatim (exact decimal(30,15) string)', function () {
+it('copies the bobot VALUE into the (6,3) column (3-dp canonical string)', function () {
     $mahasiswa = freshMahasiswaTanpaPreferensi();
     seedLegacyKriteria($mahasiswa);
 
@@ -100,8 +101,12 @@ it('copies bobot verbatim (exact decimal(30,15) string)', function () {
         ->where('criteria_key', 'pekerjaan')
         ->value('bobot');
 
-    expect((string) $collapsed)->toBe((string) $pekerjaan)
-        ->and((string) $collapsed)->toBe('0.456666666666670');
+    // Legacy source is (30,15) => '0.456666666666670'; the collapsed column is
+    // (6,3) after P4b, so the stored value is the canonical 3-dp form.
+    // The (6,3) column rounds the source value to 3 decimals; the stored value is
+    // the canonical form of the source, not its byte-identical copy.
+    expect((string) $collapsed)->toBe(number_format((float) $pekerjaan, 3, '.', ''))
+        ->and((string) $collapsed)->toBe('0.457');
 });
 
 it('maps each criterion to its typed FK or enum column', function () {

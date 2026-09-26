@@ -11,8 +11,9 @@ use Illuminate\Support\Facades\Cache;
  * The collapsed criteria row: one (mahasiswa, criteria_key) preference with a
  * typed nullable FK per criterion + a ROC weight.
  *
- * `bobot` is cast to `decimal:15` so it round-trips the exact DB string the
- * run_key parity gate hashes (until the P4b resize to (6,3)).
+ * `bobot` is cast to `decimal:3` to match the (6,3) column (P4b). The run_key
+ * parity gate is precision-independent (RecommendationRun::makeKey canonicalizes
+ * every weight to 3 decimals before hashing), so this cast does not affect parity.
  */
 class MahasiswaKriteria extends Model
 {
@@ -38,7 +39,7 @@ class MahasiswaKriteria extends Model
     ];
 
     protected $casts = [
-        'bobot' => 'decimal:15',
+        'bobot' => 'decimal:3',
     ];
 
     /**

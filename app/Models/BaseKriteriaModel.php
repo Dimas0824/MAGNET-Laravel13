@@ -22,8 +22,10 @@ use Illuminate\Database\Eloquent\Model;
  * Shape compatibility:
  *  - `pekerjaan_id`, `bidang_industri_id`, `lokasi_magang_id` are real columns.
  *  - `jenis_magang` / `open_remote` are mapped to the collapsed `value_enum`.
- *  - `bobot` is NOT cast, so `(string) $model->bobot` stays the raw
- *    `decimal(30,15)` string the run_key parity gate hashes.
+ *  - `bobot` is NOT cast, so `(string) $model->bobot` stays the raw column
+ *    string (`0.457` after the P4b (6,3) resize). The run_key parity gate is
+ *    precision-independent (makeKey canonicalizes weights to 3 decimals), so the
+ *    raw precision is not load-bearing for parity.
  */
 abstract class BaseKriteriaModel extends Model
 {

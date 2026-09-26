@@ -61,11 +61,14 @@ it('stores preference weights using the configured roc total_criteria', function
     $jenis = KriteriaJenisMagang::where('mahasiswa_id', $mahasiswa->id)->firstOrFail();
     $remote = KriteriaOpenRemote::where('mahasiswa_id', $mahasiswa->id)->firstOrFail();
 
-    expect((float) $pekerjaan->bobot)->toEqualWithDelta(ROC::getWeight(1, $total), 1e-12)
-        ->and((float) $bidang->bobot)->toEqualWithDelta(ROC::getWeight(2, $total), 1e-12)
-        ->and((float) $lokasi->bobot)->toEqualWithDelta(ROC::getWeight(3, $total), 1e-12)
-        ->and((float) $jenis->bobot)->toEqualWithDelta(ROC::getWeight(4, $total), 1e-12)
-        ->and((float) $remote->bobot)->toEqualWithDelta(ROC::getWeight(5, $total), 1e-12);
+    // bobot is stored at decimal(6,3) (P4b), so the persisted value is the ROC
+    // weight canonicalized to 3 decimals; the config total (7, not a literal) still
+    // governs it.
+    expect((float) $pekerjaan->bobot)->toEqualWithDelta(round(ROC::getWeight(1, $total), 3), 1e-9)
+        ->and((float) $bidang->bobot)->toEqualWithDelta(round(ROC::getWeight(2, $total), 3), 1e-9)
+        ->and((float) $lokasi->bobot)->toEqualWithDelta(round(ROC::getWeight(3, $total), 3), 1e-9)
+        ->and((float) $jenis->bobot)->toEqualWithDelta(round(ROC::getWeight(4, $total), 3), 1e-9)
+        ->and((float) $remote->bobot)->toEqualWithDelta(round(ROC::getWeight(5, $total), 3), 1e-9);
 });
 
 it('is idempotent: submitting preferences twice keeps one criteria row per table', function () {

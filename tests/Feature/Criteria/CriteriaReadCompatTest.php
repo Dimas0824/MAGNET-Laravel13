@@ -45,7 +45,7 @@ it('resolves $mahasiswa->kriteriaPekerjaan from mahasiswa_kriteria, not the old 
     expect($relasi)->not->toBeNull()
         ->and($relasi->mahasiswa_id)->toBe($mahasiswa->id)
         ->and($relasi->pekerjaan_id)->toBe($pekerjaanId)
-        ->and((string) $relasi->bobot)->toBe('0.456666666666670');
+        ->and((string) $relasi->bobot)->toBe('0.457');
 });
 
 it('resolves $mahasiswa->kriteriaJenisMagang->jenis_magang from value_enum', function () {
@@ -103,7 +103,7 @@ it('makes the legacy KriteriaPekerjaan query read the collapsed table', function
     $row = \App\Models\KriteriaPekerjaan::where('mahasiswa_id', $mahasiswa->id)->first();
 
     expect($row)->not->toBeNull()
-        ->and((string) $row->bobot)->toBe('0.456666666666670')
+        ->and((string) $row->bobot)->toBe('0.457')
         ->and(\App\Models\KriteriaPekerjaan::where('mahasiswa_id', $mahasiswa->id)->count())->toBe(1)
         // jenis_magang lives under a different key and must not leak in.
         ->and(\App\Models\KriteriaJenisMagang::where('mahasiswa_id', $mahasiswa->id)->count())->toBe(0);

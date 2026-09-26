@@ -39,7 +39,7 @@ it('enforces UNIQUE(mahasiswa_id, criteria_key)', function () {
     expect($unique->contains(fn ($cols) => $cols === ['mahasiswa_id', 'criteria_key']))->toBeTrue();
 });
 
-it('keeps bobot at decimal(30,15) until the post-parity resize', function () {
+it('stores bobot at decimal(6,3) after the P4b resize', function () {
     $type = DB::table('information_schema.columns')
         ->select('COLUMN_TYPE')
         ->where('TABLE_SCHEMA', DB::connection()->getDatabaseName())
@@ -47,5 +47,5 @@ it('keeps bobot at decimal(30,15) until the post-parity resize', function () {
         ->where('COLUMN_NAME', 'bobot')
         ->value('COLUMN_TYPE');
 
-    expect($type)->toBe('decimal(30,15)');
+    expect($type)->toBe('decimal(6,3)');
 });
