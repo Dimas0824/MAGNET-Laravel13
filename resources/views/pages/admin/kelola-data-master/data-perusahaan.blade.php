@@ -34,12 +34,13 @@ with(function () {
         )
             ->leftJoin('bidang_industri', 'perusahaan.bidang_industri_id', '=', 'bidang_industri.id')
             ->withCount([
-                'lowongan_magang as jumlah_mahasiswa_magang' => function (Builder $query) {
+                'lowonganMagang as jumlah_mahasiswa_magang' => function (Builder $query) {
                     $query->join('kontrak_magang', 'lowongan_magang.id', '=', 'kontrak_magang.lowongan_magang_id');
                 },
             ])
             ->orderBy('jumlah_mahasiswa_magang', 'desc')
             ->paginate($this->totalRowsPerPage),
+        'lokasiOptions' => \App\Models\LokasiMagang::orderBy('kategori_lokasi')->get(),
     ];
 });
 
@@ -167,7 +168,7 @@ $goToNextPage = fn() => $this->nextPage();
 
                             <flux:input label="Nama" placeholder="Nama perusahaan" wire:model="storePerusahaanNama" />
                             <flux:select label="Lokasi" placeholder="Pilih lokasi" wire:model="storePerusahaanLokasiMagangId">
-                                @foreach (\App\Models\LokasiMagang::orderBy('kategori_lokasi')->get() as $lokasi)
+                                @foreach ($lokasiOptions as $lokasi)
                                     <flux:select.option value="{{ $lokasi->id }}">{{ $lokasi->kategori_lokasi }} — {{ $lokasi->lokasi }}</flux:select.option>
                                 @endforeach
                             </flux:select>
