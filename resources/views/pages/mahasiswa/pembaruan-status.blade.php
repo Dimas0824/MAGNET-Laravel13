@@ -153,7 +153,7 @@ $updateStatus = function () {
     }
 
     // Additional validation for "Sedang Magang" transition
-    if ($newStatus === 'sedang_magang') {
+    if ($newStatus === 'sedang magang') {
         if (!$this->hasApprovedApplication) {
             session()->flash('error', 'Anda harus mendapat persetujuan admin terlebih dahulu sebelum dapat mengubah status ke "Sedang Magang".');
             return;
@@ -167,7 +167,7 @@ $updateStatus = function () {
 
     // Update the status
     try {
-        $this->mahasiswa->update(['status_magang' => $newStatus]);
+        $this->mahasiswa->forceFill(['status_magang' => $newStatus])->save();
         $this->mahasiswa->refresh();
 
         // Refresh the options after status change
@@ -183,11 +183,11 @@ $updateStatus = function () {
 $convertDisplayStatusToDb = function ($displayStatus) {
     switch ($displayStatus) {
         case 'Belum Magang':
-            return 'belum_magang';
+            return 'belum magang';
         case 'Sedang Magang':
-            return 'sedang_magang';
+            return 'sedang magang';
         case 'Selesai Magang':
-            return 'selesai_magang';
+            return 'selesai magang';
         default:
             return '';
     }
@@ -195,13 +195,9 @@ $convertDisplayStatusToDb = function ($displayStatus) {
 
 $isValidStatusTransition = function ($currentStatus, $newStatus) {
     $validTransitions = [
-        'belum_magang' => ['belum_magang', 'sedang_magang'],
-        'belum magang' => ['belum_magang', 'sedang_magang'],
-        'sedang_magang' => ['sedang_magang', 'selesai_magang'],
-        'sedang magang' => ['sedang_magang', 'selesai_magang'],
-        'selesai_magang' => ['selesai_magang'],
-        'selesai magang' => ['selesai_magang'],
-        'selesai' => ['selesai_magang'],
+        'belum magang' => ['belum magang', 'sedang magang'],
+        'sedang magang' => ['sedang magang', 'selesai magang'],
+        'selesai magang' => ['selesai magang'],
     ];
 
     return isset($validTransitions[$currentStatus]) && in_array($newStatus, $validTransitions[$currentStatus]);
