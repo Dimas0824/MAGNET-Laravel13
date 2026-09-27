@@ -59,6 +59,30 @@ it('shows the open-remote preference value from the criteria relation', function
     $response->assertSee('<td class="px-6 py-3">Ya', false);
 });
 
+it('renders the recommendation detail with the same ranking rows', function () {
+    $mahasiswa = mahasiswaDenganPreferensi();
+    seedDetailRecommendation($mahasiswa);
+    actingAsMahasiswa($mahasiswa);
+
+    $response = $this->get(route('mahasiswa.detail-rekomendasi'));
+    $response->assertOk();
+
+    // Global ranking row: RS/RP/FMF stage ranks come from the pre-indexed lookups
+    // and the final rank + avg_rank are rendered from the FinalRankRecommendation row.
+    $response->assertSee('Tabel Hasil Perankingan Global', false);
+    $lowongan = \App\Models\LowonganMagang::query()->latest('id')->first();
+    $response->assertSee('>'.$lowongan->id.'<', false);
+
+    // Top-10 recommendation table renders the display_rank derived from the sorted set.
+    $response->assertSee('Top 10 Perusahaan Hasil Rekomendasi Magang', false);
+    $response->assertSee('>1</td>', false);
+
+    // The method stage tables must render their single seeded row each.
+    $response->assertSee('Tabel Hasil Metode Ratio System (RS)', false);
+    $response->assertSee('Tabel Hasil Metode Reference Point (RP)', false);
+    $response->assertSee('Tabel Hasil Metode Full Multiplicative Form (FMF)', false);
+});
+
 it('does not load unbounded tables to render the calculation detail', function () {
     $mahasiswa = mahasiswaDenganPreferensi();
     seedDetailRecommendation($mahasiswa);
