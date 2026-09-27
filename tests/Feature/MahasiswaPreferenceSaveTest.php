@@ -62,3 +62,27 @@ it('creates the criteria rows when the student had none yet', function () {
     expect(MahasiswaKriteria::where('mahasiswa_id', $mahasiswa->id)->count())->toBe(5);
 });
 
+it('saves the criteria ranking priorities from the profile page', function () {
+    $mahasiswa = mahasiswaDenganPreferensi();
+    actingAsMahasiswa($mahasiswa);
+
+    // Open the ranking editor.
+    $component = Volt::test('pages.mahasiswa.profile')->call('updateRanking');
+
+    // Reorder the EXISTING rows (keep every key the view needs, incl. icon),
+    // moving lokasi_magang to the top.
+    $temp = collect($component->get('temp_rankings'))
+        ->sortBy(fn ($c) => $c['key'] === 'lokasi_magang' ? -1 : 0)
+        ->values()
+        ->map(fn ($c, $i) => array_merge($c, ['rank' => $i + 1]))
+        ->all();
+
+    $component->set('temp_rankings', $temp)->call('saveRanking')->assertHasNoErrors();
+
+    $lokasi = MahasiswaKriteria::where('mahasiswa_id', $mahasiswa->id)
+        ->where('criteria_key', MahasiswaKriteria::KEY_LOKASI_MAGANG)->first();
+
+    expect($lokasi->rank)->toBe(1);
+});
+
+

@@ -326,44 +326,43 @@ $moveDown = function ($index) {
 
 $saveRanking = function () {
     try {
-        foreach ($this->temp_rankings as $index => $criteria) {
-            $rank = $index + 1;
+        $total = config('recommendation-system.roc.total_criteria');
 
-            switch ($criteria['key']) {
-                case 'pekerjaan':
-                    $this->mahasiswa->kriteriaPekerjaan()->forceFill([
+        // Save through a MODEL instance (firstOrNew), never on the relationship
+        // object: HasOne::forceFill() is undefined and threw
+        // BadMethodCallException, which the catch below swallowed into a generic
+        // error. Wrapped in withoutEvents() so the five rows do not each fire a
+        // recompute; the event is emitted once after the loop.
+        $write = function () use ($total) {
+            foreach ($this->temp_rankings as $index => $criteria) {
+                $rank = $index + 1;
+
+                $relation = match ($criteria['key']) {
+                    'pekerjaan' => 'kriteriaPekerjaan',
+                    'bidang_industri' => 'kriteriaBidangIndustri',
+                    'lokasi_magang' => 'kriteriaLokasiMagang',
+                    'jenis_magang' => 'kriteriaJenisMagang',
+                    'open_remote' => 'kriteriaOpenRemote',
+                    default => null,
+                };
+
+                if ($relation === null) {
+                    continue;
+                }
+
+                $this->mahasiswa->{$relation}()->firstOrNew(['mahasiswa_id' => $this->mahasiswa->id])
+                    ->forceFill([
                         'rank' => $rank,
-                        'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
+                        'bobot' => ROC::getWeight($rank, $total),
                     ])->save();
-                    break;
-                case 'bidang_industri':
-                    $this->mahasiswa->kriteriaBidangIndustri()->forceFill([
-                        'rank' => $rank,
-                        'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
-                    ])->save();
-                    break;
-                case 'lokasi_magang':
-                    $this->mahasiswa->kriteriaLokasiMagang()->forceFill([
-                        'rank' => $rank,
-                        'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
-                    ])->save();
-                    break;
-                case 'jenis_magang':
-                    $this->mahasiswa->kriteriaJenisMagang()->forceFill([
-                        'rank' => $rank,
-                        'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
-                    ])->save();
-                    break;
-                case 'open_remote':
-                    $this->mahasiswa->kriteriaOpenRemote()->forceFill([
-                        'rank' => $rank,
-                        'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
-                    ])->save();
-                    break;
             }
-        }
+        };
 
-        $this->mahasiswa->touch();
+        BaseKriteriaModel::withoutEvents($write);
+
+        $this->mahasiswa->refresh();
+
+        event(new MahasiswaPreferenceUpdated($this->mahasiswa));
 
         $this->loadCriteriaRankings();
 
