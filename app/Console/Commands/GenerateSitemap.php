@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Route;
 use Spatie\Sitemap\Sitemap;
-use Spatie\Sitemap\SitemapGenerator;
 use Spatie\Sitemap\Tags\Url;
 
 class GenerateSitemap extends Command
@@ -33,7 +32,7 @@ class GenerateSitemap extends Command
 
         foreach (Route::getRoutes() as $route) {
             if (in_array('GET', $route->methods()) && $route->uri() !== null) {
-                $uri = '/' . ltrim($route->uri(), '/');
+                $uri = '/'.ltrim($route->uri(), '/');
 
                 if (
                     str_contains($uri, 'sanctum') ||
@@ -51,6 +50,6 @@ class GenerateSitemap extends Command
 
         $sitemap->writeToFile(public_path('sitemap.xml'));
 
-        echo "Sitemap successfully generated! File output is in public directory";
+        echo 'Sitemap successfully generated! File output is in public directory';
     }
 }

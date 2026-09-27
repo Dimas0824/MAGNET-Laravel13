@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Magang\CompleteInternship;
 use App\Models\{KontrakMagang, LowonganMagang, UlasanMagang};
 use Illuminate\Support\Facades\{Auth, Storage};
 use Livewire\WithFileUploads;
@@ -97,62 +98,28 @@ $completeInternship = function () {
             'review_komentar' => 'required|string|min:10|max:500',
         ]);
 
-        // Start database transaction
-        \DB::beginTransaction();
+        // Perform the domain write inside a single DB::transaction (replaces
+        // the previous manual beginTransaction()/commit()/rollBack() block).
+        (new CompleteInternship(
+            mahasiswa: $this->mahasiswa,
+            kontrak: $this->kontrak_magang,
+            buktiSurat: $this->bukti_surat_selesai_magang,
+            rating: $this->review_rating,
+            komentar: $this->review_komentar,
+            existingReview: $this->existing_review,
+        ))->handle();
 
-        try {
-            // Store the uploaded file
-            $filePath = $this->bukti_surat_selesai_magang->store('surat-selesai-magang', 'public');
+        session()->flash('success', 'Status magang berhasil diperbarui menjadi selesai. Ulasan dan surat selesai magang telah tersimpan.');
 
-            // Create or update the review
-            if ($this->existing_review) {
-                $this->existing_review->update([
-                    'rating' => $this->review_rating,
-                    'komentar' => $this->review_komentar,
-                ]);
-            } else {
-                UlasanMagang::create([
-                    'kontrak_magang_id' => $this->kontrak_magang->id,
-                    'rating' => $this->review_rating,
-                    'komentar' => $this->review_komentar,
-                ]);
-            }
+        // Reset form
+        $this->reset(['bukti_surat_selesai_magang', 'show_review_form']);
 
-            // Update mahasiswa status
-            $updateData = ['status_magang' => 'selesai magang'];
+        // Refresh data
+        $this->mahasiswa->refresh();
+        $this->existing_review = UlasanMagang::where('kontrak_magang_id', $this->kontrak_magang->id)->first();
 
-            if (\Schema::hasColumn('mahasiswa', 'bukti_surat_selesai_magang')) {
-                $updateData['bukti_surat_selesai_magang'] = $filePath;
-            }
-
-            $this->mahasiswa->update($updateData);
-
-            // Update kontrak magang end date
-            $kontrakUpdateData = ['waktu_akhir' => now()];
-
-            if (\Schema::hasColumn('kontrak_magang', 'status')) {
-                $kontrakUpdateData['status'] = 'selesai';
-            }
-
-            $this->kontrak_magang->update($kontrakUpdateData);
-
-            \DB::commit();
-
-            session()->flash('success', 'Status magang berhasil diperbarui menjadi selesai. Ulasan dan surat selesai magang telah tersimpan.');
-
-            // Reset form
-            $this->reset(['bukti_surat_selesai_magang', 'show_review_form']);
-
-            // Refresh data
-            $this->mahasiswa->refresh();
-            $this->existing_review = UlasanMagang::where('kontrak_magang_id', $this->kontrak_magang->id)->first();
-
-            // Emit event to parent component to refresh
-            $this->dispatch('refreshParent');
-        } catch (\Exception $e) {
-            \DB::rollBack();
-            throw $e;
-        }
+        // Emit event to parent component to refresh
+        $this->dispatch('refreshParent');
     } catch (\Illuminate\Validation\ValidationException $e) {
         // Fixed: Use Laravel's Arr::flatten or collect()->flatten() instead of array_flatten
         $errors = collect($e->errors())->flatten()->implode(', ');
@@ -170,7 +137,9 @@ $getInternshipInfo = function () {
     }
 
     $perusahaan = $this->kontrak_magang->lowonganMagang->perusahaan;
-    return "{$perusahaan->nama} - {$perusahaan->lokasi}";
+    $lokasi = $this->kontrak_magang->lowonganMagang->lokasiMagang->lokasi ?? '';
+
+    return trim("{$perusahaan->nama} - {$lokasi}", ' -');
 };
 
 $isCurrentlyDoingInternship = function () {

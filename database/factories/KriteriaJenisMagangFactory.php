@@ -5,11 +5,12 @@ namespace Database\Factories;
 use App\Helpers\DecisionMaking\ROC;
 use App\Models\KriteriaJenisMagang;
 use App\Models\Mahasiswa;
+use App\Models\MahasiswaKriteria;
 use App\Traits\BaseKriteriaFactory;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\KriteriaJenisMagang>
+ * @extends Factory<KriteriaJenisMagang>
  */
 class KriteriaJenisMagangFactory extends Factory
 {
@@ -24,21 +25,25 @@ class KriteriaJenisMagangFactory extends Factory
      */
     public function definition(): array
     {
-        static $mahasiswaIds = null;
-        $mahasiswaIds ??= Mahasiswa::orderBy('id')->pluck('id')->toArray();
+        $mahasiswaIds = Mahasiswa::orderBy('id')->pluck('id')->toArray();
 
         $rank = $this->faker->numberBetween(1, config('recommendation-system.roc.total_criteria'));
 
         return [
+            'criteria_key' => MahasiswaKriteria::KEY_JENIS_MAGANG,
             'jenis_magang' => $this->faker->randomElement(['berbayar', 'tidak berbayar']),
             'mahasiswa_id' => $this->faker->randomElement($mahasiswaIds),
-            'rank' => $rank,
-            'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
         ];
     }
 
     public function configure()
     {
-        return $this->withBobotCalculation();
+        return $this->afterMaking(function ($model) {
+            $rank = $this->faker->numberBetween(1, config('recommendation-system.roc.total_criteria'));
+            $model->forceFill([
+                'rank' => $rank,
+                'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
+            ]);
+        });
     }
 }

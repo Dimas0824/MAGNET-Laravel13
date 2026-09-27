@@ -1,26 +1,9 @@
 <?php
 
 use function Livewire\Volt\{state};
-use App\Models\{FormPengajuanMagang, KontrakMagang, BidangIndustri};
-use Carbon\Carbon;
+use App\Actions\Dashboard\BuildAdminStats;
 
-state([
-    'totalPengajuanMasuk' => FormPengajuanMagang::where('status', 'diproses')->count(),
-    'totalPengajuanDiterima' => FormPengajuanMagang::where('status', 'diterima')->count(),
-    'totalPengajuanDitolak' => FormPengajuanMagang::where('status', 'ditolak')->count(),
-
-    'totalKontrakMagangTahunIni' => KontrakMagang::whereYear('created_at', Carbon::now()->year)->count(),
-
-    'bidangIndustriTerpopuler' => BidangIndustri::withCount([
-        'perusahaan as total_mahasiswa' => function ($query) {
-            $query->join('lowongan_magang', 'perusahaan.id', '=', 'lowongan_magang.perusahaan_id')->join('kontrak_magang', 'lowongan_magang.id', '=', 'kontrak_magang.lowongan_magang_id');
-        },
-    ])
-        ->orderByDesc('total_mahasiswa')
-        ->take(5)
-        ->get()
-        ->toArray(),
-]);
+state((new BuildAdminStats)->handle());
 
 ?>
 

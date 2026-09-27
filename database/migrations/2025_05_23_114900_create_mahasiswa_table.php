@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     /**
      * Run the migrations.
      */
@@ -19,12 +20,12 @@ return new class extends Migration {
             $table->integer('angkatan');
             $table->enum('jenis_kelamin', ['L', 'P']);
             $table->date('tanggal_lahir');
-            $table->string('jurusan')->default("Teknologi Informasi");
+            $table->string('jurusan')->default('Teknologi Informasi');
             $table->enum('program_studi', [
-                'D4 Teknik Informatika', 'D4 Sistem Informasi Bisnis', 'D2 Pengembangan Piranti Lunak Situs'
+                'D4 Teknik Informatika', 'D4 Sistem Informasi Bisnis', 'D2 Pengembangan Piranti Lunak Situs',
             ]);
             $table->enum('status_magang', [
-                'belum magang', 'sedang magang', 'selesai magang'
+                'belum magang', 'sedang magang', 'selesai magang',
             ])->default('belum magang');
             $table->text('alamat');
             $table->timestamps();

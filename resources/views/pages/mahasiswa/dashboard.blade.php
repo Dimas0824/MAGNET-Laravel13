@@ -1,7 +1,7 @@
 <?php
 
 use function Livewire\Volt\{state, mount, computed};
-use App\Models\FinalRankRecommendation;
+use App\Services\Recommendation\LatestRecommendationService;
 use Illuminate\Support\Facades\DB;
 
 state(['recommendations', 'preferences_data', 'all_alternatives']);
@@ -9,130 +9,89 @@ state(['recommendations', 'preferences_data', 'all_alternatives']);
 mount(function () {
     $userId = auth('mahasiswa')->user()->id;
 
-    // Get top 10 unique recommendations
-    $uniqueRecommendations = DB::table('final_rank_recommendation as frr1')
-        ->join(DB::raw("(SELECT lowongan_magang_id, MAX(created_at) as latest_created_at FROM final_rank_recommendation WHERE mahasiswa_id = {$userId} GROUP BY lowongan_magang_id) as latest"), function ($join) {
-            $join->on('frr1.lowongan_magang_id', '=', 'latest.lowongan_magang_id')->on('frr1.created_at', '=', 'latest.latest_created_at');
-        })
-        ->where('frr1.mahasiswa_id', $userId)
-        ->select('frr1.*')
-        ->orderBy('frr1.rank', 'asc')
-        ->take(10)
-        ->get();
-
-    // Load recommendations with related data
-    $this->recommendations = $uniqueRecommendations
-        ->map(function ($item) {
-            $lowonganMagang = DB::table('lowongan_magang')->where('id', $item->lowongan_magang_id)->first();
-
-            if (!$lowonganMagang) {
-                return null;
-            }
-
-            $perusahaan = DB::table('perusahaan')->where('id', $lowonganMagang->perusahaan_id)->first();
-            $pekerjaan = DB::table('pekerjaan')->where('id', $lowonganMagang->pekerjaan_id)->first();
-            $bidangIndustri = $perusahaan ? DB::table('bidang_industri')->where('id', $perusahaan->bidang_industri_id)->first() : null;
-
-            return [
-                'rank' => $item->rank,
-                'lowongan_id' => $item->lowongan_magang_id,
-                'pekerjaan' => $pekerjaan->nama ?? '',
-                'bidang_industri' => $bidangIndustri->nama ?? '',
-                'lokasi' => $this->categorizeLocation($perusahaan->lokasi ?? ''),
-                'jenis_magang' => $lowonganMagang->jenis_magang ?? '',
-                'open_remote' => $lowonganMagang->open_remote ?? '',
-                'nama_perusahaan' => $perusahaan->nama ?? '',
-                'nama_lowongan' => $lowonganMagang->nama ?? '',
-            ];
-        })
-        ->filter()
-        ->toArray();
+    $this->recommendations = app(LatestRecommendationService::class)
+        ->latestForMahasiswa($userId);
 
     // Load user preferences
     $this->preferences_data = $this->loadUserPreferences($userId);
 });
 
-// Simplified location categorization
-$categorizeLocation = function ($lokasi) {
-    if (empty($lokasi)) {
-        return 'Tidak Diketahui';
-    }
-
-    $lokasi = strtolower(trim($lokasi));
-
-    // Remote work
-    if (strpos($lokasi, 'remote') !== false || strpos($lokasi, 'wfh') !== false) {
-        return 'Remote';
-    }
-
-    // Malang area
-    $malangAreas = ['malang', 'batu'];
-    foreach ($malangAreas as $area) {
-        if (strpos($lokasi, $area) !== false) {
-            return 'Area Malang Raya';
-        }
-    }
-
-    // International
-    $international = ['singapore', 'malaysia', 'japan', 'korea', 'usa', 'australia'];
-    foreach ($international as $country) {
-        if (strpos($lokasi, $country) !== false) {
-            return 'Luar Negeri';
-        }
-    }
-
-    // East Java cities
-    $eastJavaCities = ['surabaya', 'sidoarjo', 'kediri', 'blitar', 'jember'];
-    foreach ($eastJavaCities as $city) {
-        if (strpos($lokasi, $city) !== false) {
-            return 'Luar Area Malang (Jawa Timur)';
-        }
-    }
-
-    return 'Luar Provinsi Jawa Timur';
-};
-
 // Load user preferences
 $loadUserPreferences = function ($userId) {
     $preferences = [];
 
-    // Get job preference
-    $pekerjaanPref = DB::table('kriteria_pekerjaan')->join('pekerjaan', 'kriteria_pekerjaan.pekerjaan_id', '=', 'pekerjaan.id')->where('kriteria_pekerjaan.mahasiswa_id', $userId)->orderBy('kriteria_pekerjaan.rank', 'asc')->first();
+    // P3-T4: read the collapsed `mahasiswa_kriteria` table (the new single
+    // source of truth) instead of the legacy 5 `kriteria_*` tables. One query
+    // returns every criterion for this mahasiswa, keyed by criteria_key.
+    $rows = DB::table('mahasiswa_kriteria')
+        ->where('mahasiswa_id', $userId)
+        ->get()
+        ->keyBy('criteria_key');
 
+    $pekerjaanPref = $rows->get('pekerjaan');
     if ($pekerjaanPref) {
-        $preferences['pekerjaan'] = $pekerjaanPref->nama;
+        $preferences['pekerjaan'] = $pekerjaanPref->pekerjaan_id;
     }
 
-    // Get industry preference
-    $bidangPref = DB::table('kriteria_bidang_industri')->join('bidang_industri', 'kriteria_bidang_industri.bidang_industri_id', '=', 'bidang_industri.id')->where('kriteria_bidang_industri.mahasiswa_id', $userId)->orderBy('kriteria_bidang_industri.rank', 'asc')->first();
-
+    $bidangPref = $rows->get('bidang_industri');
     if ($bidangPref) {
-        $preferences['bidang_industri'] = $bidangPref->nama;
+        $preferences['bidang_industri'] = $bidangPref->bidang_industri_id;
     }
 
-    // Get location preference
-    $lokasiPref = DB::table('kriteria_lokasi_magang')->join('lokasi_magang', 'kriteria_lokasi_magang.lokasi_magang_id', '=', 'lokasi_magang.id')->where('kriteria_lokasi_magang.mahasiswa_id', $userId)->orderBy('kriteria_lokasi_magang.rank', 'asc')->first();
-
+    $lokasiPref = $rows->get('lokasi_magang');
     if ($lokasiPref) {
-        $originalPreference = $lokasiPref->kategori_lokasi;
-        $preferences['lokasi'] = $this->isAllPreference($originalPreference) ? $originalPreference : $this->categorizeLocation($originalPreference);
+        $preferences['lokasi_magang_id'] = $lokasiPref->lokasi_magang_id;
     }
 
-    // Get internship type preference
-    $jenisPref = DB::table('kriteria_jenis_magang')->where('mahasiswa_id', $userId)->orderBy('rank', 'asc')->first();
-
+    $jenisPref = $rows->get('jenis_magang');
     if ($jenisPref) {
-        $preferences['jenis_magang'] = $jenisPref->jenis_magang;
+        $preferences['jenis_magang'] = $jenisPref->value_enum;
     }
 
-    // Get remote preference
-    $remotePref = DB::table('kriteria_open_remote')->where('mahasiswa_id', $userId)->orderBy('rank', 'asc')->first();
-
+    $remotePref = $rows->get('open_remote');
     if ($remotePref) {
-        $preferences['open_remote'] = $remotePref->open_remote;
+        $preferences['open_remote'] = $remotePref->value_enum;
     }
 
-    return $preferences;
+    $pekerjaanIds = array_filter([$preferences['pekerjaan'] ?? null]);
+    $bidangIds = array_filter([$preferences['bidang_industri'] ?? null]);
+    $lokasiIds = array_filter([$preferences['lokasi_magang_id'] ?? null]);
+
+    $labels = app(LatestRecommendationService::class)
+        ->preferenceLabels($pekerjaanIds, $bidangIds, $lokasiIds);
+
+    $pekerjaanNama = $labels['pekerjaan'];
+    $bidangNama = $labels['bidang'];
+    $lokasiKategori = $labels['lokasi'];
+
+    $resolved = [];
+
+    if (isset($preferences['pekerjaan'])) {
+        $resolved['pekerjaan'] = $pekerjaanNama[$preferences['pekerjaan']] ?? null;
+    }
+
+    if (isset($preferences['bidang_industri'])) {
+        $resolved['bidang_industri'] = $bidangNama[$preferences['bidang_industri']] ?? null;
+    }
+
+    if (isset($preferences['lokasi_magang_id'])) {
+        $original = $lokasiKategori[$preferences['lokasi_magang_id']] ?? null;
+        if ($original !== null) {
+            // `kategori_lokasi` is already the normalized category; no more
+            // string matching against free text is needed.
+            $resolved['lokasi'] = $original;
+        }
+    }
+
+    if (isset($preferences['jenis_magang'])) {
+        $resolved['jenis_magang'] = $preferences['jenis_magang'];
+    }
+
+    if (isset($preferences['open_remote'])) {
+        $resolved['open_remote'] = $preferences['open_remote'];
+    }
+
+    return $resolved;
 };
 
 // Check if preference is "all"

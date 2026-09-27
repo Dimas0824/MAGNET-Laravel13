@@ -26,7 +26,7 @@ class MakeRepository extends Command
     public function __construct()
     {
         parent::__construct();
-        $this->files = new Filesystem();
+        $this->files = new Filesystem;
     }
 
     /**
@@ -35,11 +35,12 @@ class MakeRepository extends Command
     public function handle()
     {
         $name = $this->argument('name');
-        $repositoryPath = app_path("Repositories");
-        $filePath = $repositoryPath . '/' . $name . '.php';
+        $repositoryPath = app_path('Repositories');
+        $filePath = $repositoryPath.'/'.$name.'.php';
 
         if ($this->files->exists($filePath)) {
             $this->error("Repository {$name} already exists!");
+
             return 1;
         }
 
@@ -52,6 +53,7 @@ class MakeRepository extends Command
         $this->files->put($filePath, $stub);
 
         $this->info("Repository {$name} created successfully!");
+
         return 0;
     }
 

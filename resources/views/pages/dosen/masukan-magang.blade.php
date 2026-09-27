@@ -1,10 +1,14 @@
 <?php
 
-use function Livewire\Volt\{state, layout, mount};
+use App\Events\ChatMessageSent;
 use App\Models\Chat;
 use App\Models\KontrakMagang;
 use App\Models\Mahasiswa;
 use Illuminate\Support\Facades\Auth;
+
+use function Livewire\Volt\layout;
+use function Livewire\Volt\mount;
+use function Livewire\Volt\state;
 
 layout('components.layouts.user.main');
 
@@ -17,17 +21,17 @@ state([
     'mahasiswaData' => null,
     'isAuthorized' => false,
     'lastMessageId' => 0,
-    'isPolling' => true,
 ]);
 
 mount(function () {
     // Pastikan user adalah dosen
-    if (!Auth::guard('dosen')->check()) {
+    if (! Auth::guard('dosen')->check()) {
         abort(403, 'Unauthorized access');
     }
 
-    // Ambil ID mahasiswa dari query parameter
-    $this->mahasiswaId = request()->query('id');
+    // Ambil ID mahasiswa dari query parameter, validasi sebelum dipakai.
+    $mahasiswaId = (int) request()->query('id');
+    $this->mahasiswaId = $mahasiswaId > 0 ? $mahasiswaId : null;
 
     $this->initializeChat();
 });
@@ -37,21 +41,24 @@ $initializeChat = function () {
         $currentUserId = Auth::guard('dosen')->id();
 
         // Check if user is authenticated
-        if (!$currentUserId) {
+        if (! $currentUserId) {
             session()->flash('error', 'Anda harus login sebagai dosen terlebih dahulu.');
+
             return;
         }
 
         // Check mahasiswa ID dari query parameter
-        if (!$this->mahasiswaId) {
+        if (! $this->mahasiswaId) {
             session()->flash('error', 'ID mahasiswa tidak ditemukan dalam URL.');
+
             return;
         }
 
         // Get mahasiswa data
         $mahasiswa = Mahasiswa::find($this->mahasiswaId);
-        if (!$mahasiswa) {
+        if (! $mahasiswa) {
             session()->flash('error', 'Mahasiswa tidak ditemukan.');
+
             return;
         }
 
@@ -64,8 +71,9 @@ $initializeChat = function () {
             ->latest()
             ->first();
 
-        if (!$kontrak) {
+        if (! $kontrak) {
             session()->flash('error', 'Kontrak magang tidak ditemukan atau Anda bukan dosen pembimbing mahasiswa ini.');
+
             return;
         }
 
@@ -86,7 +94,7 @@ $initializeChat = function () {
 };
 
 $loadMessages = function () {
-    if (!$this->isAuthorized || !$this->mahasiswaData) {
+    if (! $this->isAuthorized || ! $this->mahasiswaData) {
         return;
     }
 
@@ -94,37 +102,33 @@ $loadMessages = function () {
         $dosenId = Auth::guard('dosen')->id();
         $mahasiswaId = $this->mahasiswaId;
 
-        // Load messages for this kontrak between dosen and mahasiswa
+        // Load messages for this kontrak, identified by participant ROLE.
+        // Raw id comparison is unsafe: mahasiswa.id and dosen.id can collide.
         $messages = Chat::where('kontrak_magang_id', $this->kontrakMagangId)
-            ->where(function ($query) use ($dosenId, $mahasiswaId) {
-                $query
-                    ->where(function ($q) use ($dosenId, $mahasiswaId) {
-                        $q->where('sender_id', $dosenId)->where('receiver_id', $mahasiswaId);
-                    })
-                    ->orWhere(function ($q) use ($dosenId, $mahasiswaId) {
-                        $q->where('sender_id', $mahasiswaId)->where('receiver_id', $dosenId);
-                    });
-            })
             ->orderBy('created_at', 'asc')
             ->get();
 
         $this->messages = $messages
             ->map(function ($chat) use ($dosenId) {
+                $isMine = $chat->isSentByDosen();
+
                 return [
                     'id' => $chat->id,
                     'message' => $chat->message,
                     'sender_id' => $chat->sender_id,
+                    'sender_type' => $chat->sender_type,
                     'receiver_id' => $chat->receiver_id,
-                    'is_mine' => $chat->sender_id == $dosenId,
+                    'receiver_type' => $chat->receiver_type,
+                    'is_mine' => $isMine,
                     'created_at' => $chat->created_at->format('H:i'),
                     'created_date' => $chat->created_at->format('Y-m-d'),
-                    'sender_name' => $chat->sender_id == $dosenId ? 'Saya' : $this->mahasiswaData->nama,
+                    'sender_name' => $isMine ? 'Saya' : $this->mahasiswaData->nama,
                 ];
             })
             ->toArray();
 
         // Update last message ID for polling
-        if (!empty($this->messages)) {
+        if (! empty($this->messages)) {
             $this->lastMessageId = max(array_column($this->messages, 'id'));
         }
     } catch (\Exception $e) {
@@ -137,72 +141,26 @@ $loadMessages = function () {
 };
 
 $checkNewMessages = function () {
-    if (!$this->isAuthorized || !$this->mahasiswaData || !$this->isPolling) {
-        return;
-    }
-
-    try {
-        $dosenId = Auth::guard('dosen')->id();
-        $mahasiswaId = $this->mahasiswaId;
-
-        // Check for new messages since last known message
-        $newMessages = Chat::where('kontrak_magang_id', $this->kontrakMagangId)
-            ->where('id', '>', $this->lastMessageId)
-            ->where(function ($query) use ($dosenId, $mahasiswaId) {
-                $query
-                    ->where(function ($q) use ($dosenId, $mahasiswaId) {
-                        $q->where('sender_id', $dosenId)->where('receiver_id', $mahasiswaId);
-                    })
-                    ->orWhere(function ($q) use ($dosenId, $mahasiswaId) {
-                        $q->where('sender_id', $mahasiswaId)->where('receiver_id', $dosenId);
-                    });
-            })
-            ->orderBy('created_at', 'asc')
-            ->get();
-
-        if ($newMessages->count() > 0) {
-            // Add new messages to existing messages array
-            foreach ($newMessages as $chat) {
-                $this->messages[] = [
-                    'id' => $chat->id,
-                    'message' => $chat->message,
-                    'sender_id' => $chat->sender_id,
-                    'receiver_id' => $chat->receiver_id,
-                    'is_mine' => $chat->sender_id == $dosenId,
-                    'created_at' => $chat->created_at->format('H:i'),
-                    'created_date' => $chat->created_at->format('Y-m-d'),
-                    'sender_name' => $chat->sender_id == $dosenId ? 'Saya' : $this->mahasiswaData->nama,
-                ];
-            }
-
-            // Update last message ID
-            $this->lastMessageId = $newMessages->max('id');
-
-            // Trigger scroll to bottom for new messages
-            $this->dispatch('new-message-received');
-        }
-    } catch (\Exception $e) {
-        \Log::error('Error checking new messages for lecturer', [
-            'error' => $e->getMessage(),
-            'kontrak_magang_id' => $this->kontrakMagangId,
-        ]);
-    }
+    $this->loadMessages();
 };
 
 $sendMessage = function () {
     // Validate input
     if (empty(trim($this->messageText))) {
         session()->flash('error', 'Pesan tidak boleh kosong.');
+
         return;
     }
 
-    if (!$this->isAuthorized) {
+    if (! $this->isAuthorized) {
         session()->flash('error', 'Anda tidak memiliki akses untuk mengirim pesan.');
+
         return;
     }
 
-    if (!$this->mahasiswaData || !$this->kontrakMagangId) {
+    if (! $this->mahasiswaData || ! $this->kontrakMagangId) {
         session()->flash('error', 'Data tidak lengkap untuk mengirim pesan.');
+
         return;
     }
 
@@ -213,26 +171,33 @@ $sendMessage = function () {
         $chatData = [
             'kontrak_magang_id' => $this->kontrakMagangId,
             'sender_id' => $dosenId,
+            'sender_type' => Chat::SENDER_DOSEN,
             'receiver_id' => $mahasiswaId,
+            'receiver_type' => Chat::SENDER_MAHASISWA,
             'message' => trim($this->messageText),
         ];
 
         // Periksa apakah kontrak magang benar-benar ada
         $kontrakExists = KontrakMagang::find($this->kontrakMagangId);
-        if (!$kontrakExists) {
+        if (! $kontrakExists) {
             session()->flash('error', 'Kontrak magang tidak ditemukan di database.');
+
             return;
         }
 
         // Create message
         $chat = Chat::create($chatData);
 
+        event(new ChatMessageSent($chat));
+
         // Add message to current messages array immediately
         $this->messages[] = [
             'id' => $chat->id,
             'message' => $chat->message,
             'sender_id' => $chat->sender_id,
+            'sender_type' => $chat->sender_type,
             'receiver_id' => $chat->receiver_id,
+            'receiver_type' => $chat->receiver_type,
             'is_mine' => true,
             'created_at' => $chat->created_at->format('H:i'),
             'created_date' => $chat->created_at->format('Y-m-d'),
@@ -263,16 +228,14 @@ $sendMessage = function () {
     }
 };
 
-$togglePolling = function () {
-    $this->isPolling = !$this->isPolling;
-};
-
 ?>
 
 <x-slot:user>dosen</x-slot:user>
 <div x-data="{
     isVisible: true,
     pollingInterval: null,
+    chatChannel: null,
+    kontrakMagangId: @js($kontrakMagangId),
 
     init() {
         this.startPolling();
@@ -295,26 +258,38 @@ $togglePolling = function () {
     },
 
     startPolling() {
-        this.pollingInterval = setInterval(() => {
-            if (this.isVisible && $wire.isPolling) {
-                $wire.checkNewMessages();
-            }
-        }, 2000); // Check every 2 seconds
+        this.subscribeToChat();
     },
 
     stopPolling() {
+        if (this.chatChannel) {
+            window.Echo.leave(`chat.${this.kontrakMagangId}`);
+            this.chatChannel = null;
+        }
         if (this.pollingInterval) {
             clearInterval(this.pollingInterval);
             this.pollingInterval = null;
         }
     },
 
+    subscribeToChat() {
+        if (!window.Echo || this.chatChannel) {
+            return;
+        }
+
+        this.chatChannel = window.Echo.private(`chat.${this.kontrakMagangId}`)
+            .listen('.ChatMessageSent', () => {
+                this.$wire.loadMessages();
+                this.$wire.$dispatch('new-message-received');
+            });
+    },
+
     handleVisibilityChange() {
         document.addEventListener('visibilitychange', () => {
             this.isVisible = !document.hidden;
             if (this.isVisible) {
-                // Check for new messages immediately when tab becomes visible
-                $wire.checkNewMessages();
+                this.$wire.loadMessages();
+                this.subscribeToChat();
             }
         });
     },
@@ -322,7 +297,7 @@ $togglePolling = function () {
     handleKeydown(event) {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
-            $wire.sendMessage();
+            this.$wire.sendMessage();
         }
     },
 
@@ -385,9 +360,8 @@ $togglePolling = function () {
                     </flux:subheading>
                 </div>
             </div>
-            {{-- Polling Status Indicator --}}
             <div class="flex items-center gap-2">
-                <div class="flex items-center gap-1" x-show="$wire.isPolling" x-transition>
+                <div class="flex items-center gap-1">
                     <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                     <span class="text-xs text-green-600 font-medium">Online</span>
                 </div>
@@ -442,8 +416,7 @@ $togglePolling = function () {
                     @endif
 
                     {{-- Message --}}
-                    <div class="message-item" x-data="{ isNew: false }" x-init="// Mark as new if this is a recent message
-                    if ({{ $message['id'] }} > {{ $lastMessageId - 1 }} && !{{ $message['is_mine'] ? 'true' : 'false' }}) {
+                    <div class="message-item" x-data="{ isNew: false }" x-init="if ({{ $message['id'] }} > {{ $lastMessageId - 1 }} && !{{ $message['is_mine'] ? 'true' : 'false' }}) {
                         isNew = true;
                         setTimeout(() => isNew = false, 3000);
                     }">

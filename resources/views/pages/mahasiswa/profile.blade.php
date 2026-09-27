@@ -2,10 +2,9 @@
 
 use Flux\Flux;
 use function Livewire\Volt\{state, mount};
-use Illuminate\Support\Facades\Hash;
 use App\Models\{Mahasiswa, BidangIndustri, LokasiMagang, Pekerjaan};
-use App\Helpers\DecisionMaking\ROC;
-use App\Events\MahasiswaPreferenceUpdated;
+use App\Livewire\Forms\{UpdateProfileForm, ChangePasswordForm};
+use App\Actions\Profile\{UpdateProfile, ChangePassword, SavePreference, SaveRanking};
 
 state([
     'mahasiswa',
@@ -77,6 +76,14 @@ state([
 mount(function () {
     $this->mahasiswa = auth('mahasiswa')->user();
 
+    $this->mahasiswa->loadMissing([
+        'kriteriaPekerjaan.pekerjaan',
+        'kriteriaBidangIndustri.bidangIndustri',
+        'kriteriaLokasiMagang.lokasiMagang',
+        'kriteriaJenisMagang',
+        'kriteriaOpenRemote',
+    ]);
+
     // Load personal data
     $this->nama = $this->mahasiswa->nama;
     $this->nim = $this->mahasiswa->nim;
@@ -85,12 +92,13 @@ mount(function () {
     $this->jenis_kelamin = $this->mahasiswa->jenis_kelamin;
     $this->alamat = $this->mahasiswa->alamat;
 
-    // Load preference data dengan nama, bukan ID
-    $this->bidang_industri = $this->mahasiswa->kriteriaBidangIndustri->bidangIndustri->nama;
-    $this->jenis_magang = $this->mahasiswa->kriteriaJenisMagang->jenis_magang;
-    $this->lokasi_magang = $this->mahasiswa->kriteriaLokasiMagang->lokasi_magang->kategori_lokasi;
-    $this->pekerjaan = $this->mahasiswa->kriteriaPekerjaan->pekerjaan->nama;
-    $this->open_remote = $this->mahasiswa->kriteriaOpenRemote->open_remote;
+    // Load preference data dengan nama, bukan ID. A student who has not set
+    // preferences yet has no criteria rows, so every access must be null-safe.
+    $this->bidang_industri = $this->mahasiswa->kriteriaBidangIndustri?->bidangIndustri?->nama ?? '';
+    $this->jenis_magang = $this->mahasiswa->kriteriaJenisMagang?->jenis_magang ?? '';
+    $this->lokasi_magang = $this->mahasiswa->kriteriaLokasiMagang?->lokasiMagang?->kategori_lokasi ?? '';
+    $this->pekerjaan = $this->mahasiswa->kriteriaPekerjaan?->pekerjaan?->nama ?? '';
+    $this->open_remote = $this->mahasiswa->kriteriaOpenRemote?->open_remote ?? '';
 
     // Load criteria rankings
     $this->loadCriteriaRankings();
@@ -103,46 +111,49 @@ $setActiveSection = function ($section) {
 
 // Load criteria rankings
 $loadCriteriaRankings = function () {
+    // A student who has not set preferences yet has no criteria rows; default
+    // rank/bobot so the profile still renders (null-safe, P3 collapse made the
+    // relations return null instead of an empty stub row).
     $this->criteria_rankings = [
         [
             'key' => 'pekerjaan',
             'label' => 'Pekerjaan',
             'icon' => 'briefcase',
             'description' => 'Jenis pekerjaan yang diinginkan',
-            'rank' => $this->mahasiswa->kriteriaPekerjaan->rank,
-            'bobot' => $this->mahasiswa->kriteriaPekerjaan->bobot,
+            'rank' => $this->mahasiswa->kriteriaPekerjaan?->rank ?? 0,
+            'bobot' => $this->mahasiswa->kriteriaPekerjaan?->bobot ?? 0,
         ],
         [
             'key' => 'bidang_industri',
             'label' => 'Bidang Industri',
             'icon' => 'building-office',
             'description' => 'Sektor industri yang diminati',
-            'rank' => $this->mahasiswa->kriteriaBidangIndustri->rank,
-            'bobot' => $this->mahasiswa->kriteriaBidangIndustri->bobot,
+            'rank' => $this->mahasiswa->kriteriaBidangIndustri?->rank ?? 0,
+            'bobot' => $this->mahasiswa->kriteriaBidangIndustri?->bobot ?? 0,
         ],
         [
             'key' => 'lokasi_magang',
             'label' => 'Lokasi Magang',
             'icon' => 'map-pin',
             'description' => 'Preferensi lokasi magang',
-            'rank' => $this->mahasiswa->kriteriaLokasiMagang->rank,
-            'bobot' => $this->mahasiswa->kriteriaLokasiMagang->bobot,
+            'rank' => $this->mahasiswa->kriteriaLokasiMagang?->rank ?? 0,
+            'bobot' => $this->mahasiswa->kriteriaLokasiMagang?->bobot ?? 0,
         ],
         [
             'key' => 'jenis_magang',
             'label' => 'Jenis Magang',
             'icon' => 'currency-dollar',
             'description' => 'Berbayar atau tidak berbayar',
-            'rank' => $this->mahasiswa->kriteriaJenisMagang->rank,
-            'bobot' => $this->mahasiswa->kriteriaJenisMagang->bobot,
+            'rank' => $this->mahasiswa->kriteriaJenisMagang?->rank ?? 0,
+            'bobot' => $this->mahasiswa->kriteriaJenisMagang?->bobot ?? 0,
         ],
         [
             'key' => 'open_remote',
             'label' => 'Remote Work',
             'icon' => 'computer-desktop',
             'description' => 'Kesempatan kerja remote',
-            'rank' => $this->mahasiswa->kriteriaOpenRemote->rank,
-            'bobot' => $this->mahasiswa->kriteriaOpenRemote->bobot,
+            'rank' => $this->mahasiswa->kriteriaOpenRemote?->rank ?? 0,
+            'bobot' => $this->mahasiswa->kriteriaOpenRemote?->bobot ?? 0,
         ],
     ];
 
@@ -157,23 +168,20 @@ $updatePersonalData = function () {
 
 $savePersonalData = function () {
     try {
-        $this->validate([
-            'nama' => 'required|string|max:255',
-            'nim' => 'required|string|max:20|unique:mahasiswa,nim,' . $this->mahasiswa->id,
-            'jurusan' => 'required|string|max:255',
-            'program_studi' => 'required|string|max:255',
-            'jenis_kelamin' => 'required|in:L,P',
-            'alamat' => 'required|string|max:500',
+        // Validate through the shared form object's rule definitions (W0-T06c).
+        // The runtime `unique:mahasiswa,nim,<id>` clause cannot live in a form
+        // attribute, so it is composed here and merged over the base rules.
+        $this->validate(UpdateProfileForm::rules() + [
+            'nim' => ['required', 'string', 'max:20', 'unique:mahasiswa,nim,' . $this->mahasiswa->id],
         ]);
 
-        $this->mahasiswa->update([
+        (new UpdateProfile)->handle($this->mahasiswa, [
             'nama' => $this->nama,
             'nim' => $this->nim,
             'jurusan' => $this->jurusan,
             'program_studi' => $this->program_studi,
             'jenis_kelamin' => $this->jenis_kelamin,
             'alamat' => $this->alamat,
-            'updated_at' => now(),
         ]);
 
         $this->showModal('success', 'Data Personal Berhasil Diperbarui', 'Data personal Anda telah berhasil diperbarui.');
@@ -204,34 +212,18 @@ $updatePreference = function () {
 
 $saveNewPreference = function () {
     try {
-        // Cari ID berdasarkan nama untuk bidang industri
-        $bidangIndustri = BidangIndustri::where('nama', $this->bidang_industri)->first();
-        if (!$bidangIndustri) {
-            throw new \Exception('Bidang Industri tidak ditemukan');
-        }
-
-        // Cari ID berdasarkan kategori_lokasi untuk lokasi magang
-        $lokasiMagang = LokasiMagang::where('kategori_lokasi', $this->lokasi_magang)->first();
-        if (!$lokasiMagang) {
-            throw new \Exception('Lokasi Magang tidak ditemukan');
-        }
-
-        // Cari ID berdasarkan nama untuk pekerjaan
-        $pekerjaan = Pekerjaan::where('nama', $this->pekerjaan)->first();
-        if (!$pekerjaan) {
-            throw new \Exception('Pekerjaan tidak ditemukan');
-        }
-
-        // Update data dengan ID yang sesuai
-        $this->mahasiswa->kriteriaBidangIndustri()->update(['bidang_industri_id' => $bidangIndustri->id]);
-        $this->mahasiswa->kriteriaJenisMagang()->update(['jenis_magang' => $this->jenis_magang]);
-        $this->mahasiswa->kriteriaLokasiMagang()->update(['lokasi_magang_id' => $lokasiMagang->id]);
-        $this->mahasiswa->kriteriaPekerjaan()->update(['pekerjaan_id' => $pekerjaan->id]);
-        $this->mahasiswa->kriteriaOpenRemote()->update(['open_remote' => $this->open_remote]);
-
-        $this->mahasiswa->touch();
-
-        event(new MahasiswaPreferenceUpdated($this->mahasiswa));
+        // Delegate to the Action, which reuses MahasiswaPreferenceService: the
+        // five criteria writes go through firstOrNew()->forceFill()->save()
+        // inside BaseKriteriaModel::withoutEvents() (so the legacy->value_enum
+        // remap for jenis_magang/open_remote runs and the 5 rows do not each
+        // fire a recompute), then one MahasiswaPreferenceUpdated event fires.
+        (new SavePreference)->handle($this->mahasiswa, [
+            'pekerjaan' => $this->pekerjaan,
+            'bidang_industri' => $this->bidang_industri,
+            'lokasi_magang' => $this->lokasi_magang,
+            'jenis_magang' => $this->jenis_magang,
+            'open_remote' => $this->open_remote,
+        ]);
 
         $this->showModal('success', 'Preferensi Magang Berhasil Diperbarui', 'Preferensi magang Anda telah berhasil diperbarui dan sistem rekomendasi telah dijalankan ulang.');
         $this->isUpdatePreference = false;
@@ -244,7 +236,7 @@ $cancelUpdatePreference = function () {
     // Reset ke nilai asli menggunakan nama
     $this->bidang_industri = $this->mahasiswa->kriteriaBidangIndustri->bidangIndustri->nama;
     $this->jenis_magang = $this->mahasiswa->kriteriaJenisMagang->jenis_magang;
-    $this->lokasi_magang = $this->mahasiswa->kriteriaLokasiMagang->lokasi_magang->kategori_lokasi;
+        $this->lokasi_magang = $this->mahasiswa->kriteriaLokasiMagang->lokasiMagang->kategori_lokasi;
     $this->pekerjaan = $this->mahasiswa->kriteriaPekerjaan->pekerjaan->nama;
     $this->open_remote = $this->mahasiswa->kriteriaOpenRemote->open_remote;
 
@@ -285,44 +277,13 @@ $moveDown = function ($index) {
 
 $saveRanking = function () {
     try {
-        foreach ($this->temp_rankings as $index => $criteria) {
-            $rank = $index + 1;
+        // Delegate to the Action, which reuses MahasiswaPreferenceService: each
+        // key at index i gets rank i+1 and its ROC weight, written through a
+        // MODEL instance (firstOrNew()->forceFill()->save()) inside
+        // withoutEvents(); one MahasiswaPreferenceUpdated event fires after.
+        $orderedKeys = array_map(fn ($criteria) => $criteria['key'], $this->temp_rankings);
 
-            switch ($criteria['key']) {
-                case 'pekerjaan':
-                    $this->mahasiswa->kriteriaPekerjaan()->update([
-                        'rank' => $rank,
-                        'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
-                    ]);
-                    break;
-                case 'bidang_industri':
-                    $this->mahasiswa->kriteriaBidangIndustri()->update([
-                        'rank' => $rank,
-                        'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
-                    ]);
-                    break;
-                case 'lokasi_magang':
-                    $this->mahasiswa->kriteriaLokasiMagang()->update([
-                        'rank' => $rank,
-                        'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
-                    ]);
-                    break;
-                case 'jenis_magang':
-                    $this->mahasiswa->kriteriaJenisMagang()->update([
-                        'rank' => $rank,
-                        'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
-                    ]);
-                    break;
-                case 'open_remote':
-                    $this->mahasiswa->kriteriaOpenRemote()->update([
-                        'rank' => $rank,
-                        'bobot' => ROC::getWeight($rank, config('recommendation-system.roc.total_criteria')),
-                    ]);
-                    break;
-            }
-        }
-
-        $this->mahasiswa->touch();
+        (new SaveRanking)->handle($this->mahasiswa, $orderedKeys);
 
         $this->loadCriteriaRankings();
 
@@ -348,23 +309,14 @@ $updatePassword = function () {
 
 $saveNewPassword = function () {
     try {
-        $this->validate([
-            'current_password' => 'required',
-            'new_password' => 'required|min:8|confirmed',
-            'new_password_confirmation' => 'required',
-        ]);
+        // Validate through the shared form object's rule definitions (W0-T06c).
+        $this->validate(ChangePasswordForm::rules());
 
-        // Verify current password
-        if (!Hash::check($this->current_password, $this->mahasiswa->password)) {
+        // Verify current password + update via the Action.
+        if (! (new ChangePassword)->handle($this->mahasiswa, $this->current_password, $this->new_password)) {
             $this->showModal('error', 'Password Lama Salah', 'Password lama yang Anda masukkan tidak sesuai.');
             return;
         }
-
-        // Update password
-        $this->mahasiswa->update([
-            'password' => Hash::make($this->new_password),
-            'updated_at' => now(),
-        ]);
 
         $this->showModal('success', 'Password Berhasil Diubah', 'Password Anda telah berhasil diubah.');
         $this->isUpdatePassword = false;

@@ -13,53 +13,93 @@ class DataPreprocessing
 {
     /**
      * Compute data categorization from raw alternatives data
-     * @return void
      */
     public static function dataCategorization(LowonganMagang $lowonganMagang): void
     {
+        $lowonganMagang->loadMissing(['pekerjaan', 'lokasiMagang', 'perusahaan.bidangIndustri']);
+
         $alternative = [
             'id' => $lowonganMagang->id,
             'pekerjaan' => $lowonganMagang->pekerjaan->nama,
             'open_remote' => $lowonganMagang->open_remote,
             'jenis_magang' => $lowonganMagang->jenis_magang,
             'bidang_industri' => $lowonganMagang->perusahaan->bidangIndustri->nama,
-            'lokasi_magang' => $lowonganMagang->lokasi_magang->lokasi
+            'lokasi_magang' => $lowonganMagang->lokasiMagang->lokasi,
         ];
 
         $lokasi_magang_list = LokasiMagang::pluck('kategori_lokasi', 'lokasi')
             ->toArray();
 
         $lokasi = $alternative['lokasi_magang'];
-        $alternative['lokasi_magang'] = $lokasi_magang_list[$lokasi];
+        $alternative['lokasi_magang'] = $lokasi_magang_list[$lokasi] ?? 'Semua lokasi';
 
-        $fileContent = Storage::json(config('recommendation-system.preprocessing.alternatives_categorized_path'));
+        $path = config('recommendation-system.preprocessing.alternatives_categorized_path');
+        $fileContent = Storage::json($path) ?? [];
 
-        $fileContent[] = $alternative;
-        Storage::put(config('recommendation-system.preprocessing.alternatives_categorized_path'), json_encode($fileContent, JSON_PRETTY_PRINT));
+        // Upsert by lowongan id so repeated create/update events do not
+        // accumulate duplicate entries.
+        $replaced = false;
+        foreach ($fileContent as $index => $existing) {
+            if (($existing['id'] ?? null) === $alternative['id']) {
+                $fileContent[$index] = $alternative;
+                $replaced = true;
+                break;
+            }
+        }
+
+        if (! $replaced) {
+            $fileContent[] = $alternative;
+        }
+
+        Storage::put($path, json_encode($fileContent, JSON_PRETTY_PRINT));
     }
-
-
 
     /**
      * Compute data encoding based from to all alternatives data based on user preference
+     *
      * @return array<int, array<string, int>>
      */
     public static function dataEncoding(Mahasiswa $mahasiswa): void
     {
+        $mahasiswa->loadMissing([
+            'kriteriaPekerjaan.pekerjaan',
+            'kriteriaBidangIndustri.bidangIndustri',
+            'kriteriaJenisMagang',
+            'kriteriaLokasiMagang.lokasiMagang',
+            'kriteriaOpenRemote',
+        ]);
+
         $preference = [
             'pekerjaan' => $mahasiswa->kriteriaPekerjaan->pekerjaan->nama,
             'bidang_industri' => $mahasiswa->kriteriaBidangIndustri->bidangIndustri->nama,
             'jenis_magang' => $mahasiswa->kriteriaJenisMagang->jenis_magang,
-            'lokasi_magang' => $mahasiswa->kriteriaLokasiMagang->lokasi_magang->kategori_lokasi,
-            'open_remote' => $mahasiswa->kriteriaOpenRemote->open_remote
+            'lokasi_magang' => $mahasiswa->kriteriaLokasiMagang->lokasiMagang->kategori_lokasi,
+            'open_remote' => $mahasiswa->kriteriaOpenRemote->open_remote,
         ];
 
-        $dataCategorized = Storage::json(config('recommendation-system.preprocessing.alternatives_categorized_path'));
+        // Storage::json() returns null when the file has not been written yet
+        // (a fresh install, or before any opening has been categorized). Treat
+        // that as "no alternatives" instead of crashing the pipeline: the
+        // queued RunRecommendationPipeline runs this on every preference
+        // update and previously threw
+        // "array_map(): Argument #2 must be of type array, null given".
+        $dataCategorized = Storage::json(config('recommendation-system.preprocessing.alternatives_categorized_path')) ?? [];
+
+        // Drop entries whose opening no longer exists so the insert below
+        // cannot violate encoded_alternatives.lowongan_magang_id foreign key
+        // (the categorized file persists across resets and can go stale).
+        $existingOpeningIds = LowonganMagang::whereIn('id', array_column($dataCategorized, 'id'))
+            ->pluck('id')
+            ->all();
+        $dataCategorized = array_values(array_filter(
+            $dataCategorized,
+            fn (array $item): bool => in_array($item['id'] ?? null, $existingOpeningIds, true)
+        ));
 
         $now = now();
 
         $result = array_map(
-            fn(array $item): array => [
+            fn (array $item): array => [
                 'mahasiswa_id' => $mahasiswa->id,
                 'lowongan_magang_id' => $item['id'],
                 'pekerjaan' => match ($preference['pekerjaan']) {
@@ -88,8 +128,15 @@ class DataPreprocessing
             $dataCategorized
         );
 
-        DB::transaction(function () use ($result) {
-            EncodedAlternatives::insert($result);
+        DB::transaction(function () use ($mahasiswa, $result) {
+            // Replace this mahasiswa's encodings instead of appending, so
+            // repeated pipeline runs stay idempotent and never accumulate
+            // stale rows (encoded_alternatives has no unique constraint).
+            EncodedAlternatives::where('mahasiswa_id', $mahasiswa->id)->delete();
+
+            if ($result !== []) {
+                EncodedAlternatives::insert($result);
+            }
         });
     }
 }

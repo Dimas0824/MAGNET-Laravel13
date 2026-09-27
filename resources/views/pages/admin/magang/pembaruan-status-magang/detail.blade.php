@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Models\KontrakMagang;
 use App\Models\Mahasiswa;
 use App\Models\DosenPembimbing;
+use App\Actions\Kontrak\ApproveKontrakMagang;
+use App\Actions\Kontrak\RejectKontrakMagang;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -15,13 +17,16 @@ state([
     'kontrakMagang' => null,
     'mahasiswa' => null,
     'dosen_selected' => null,
+    'dosenList' => [],
     'admin_keterangan' => '',
     'rejection_reason' => '',
     'isProcessing' => false,
 ]);
 
-mount(function () {
-    $mahasiswa_id = (int) request()->route('id');
+mount(function ($id = null) {
+    // Route param is injected by the Voltr route; the explicit $id argument
+    // keeps Volt::test() able to mount the component without a bound route.
+    $mahasiswa_id = (int) ($id ?? request()->route('id'));
 
     $this->kontrakMagang = KontrakMagang::with(['mahasiswa', 'lowonganMagang.perusahaan', 'lowonganMagang.pekerjaan', 'dosenPembimbing'])
         ->where('mahasiswa_id', $mahasiswa_id)
@@ -32,6 +37,14 @@ mount(function () {
         $this->mahasiswa = $this->kontrakMagang->mahasiswa;
         $this->dosen_selected = $this->kontrakMagang->dosen_id;
     }
+
+    // Resolve the dosen options once at mount so the render does not issue a
+    // read query of its own.
+    $this->dosenList = DosenPembimbing::select('id', 'nama', 'nidn')
+        ->whereNotNull('nama')
+        ->orderBy('nama', 'asc')
+        ->get()
+        ->all();
 });
 
 $canApprove = computed(function () {
@@ -84,33 +97,11 @@ $approveContract = function () {
         ]);
 
         DB::transaction(function () use ($finalKeterangan) {
-            // Update menggunakan query builder untuk memastikan
-            $updated = DB::table('kontrak_magang')
-                ->where('id', $this->kontrakMagang->id)
-                ->update([
-                    'status' => 'disetujui',
-                    'dosen_id' => $this->dosen_selected,
-                    'keterangan' => $finalKeterangan,
-                    'updated_at' => now(),
-                ]);
-
-            \Log::info('Approve Contract - Hasil update kontrak:', [
-                'contract_id' => $this->kontrakMagang->id,
-                'rows_affected' => $updated,
-            ]);
-
-            // Update status mahasiswa
-            $mahasiswaUpdated = DB::table('mahasiswa')
-                ->where('id', $this->mahasiswa->id)
-                ->update([
-                    'status_magang' => 'sedang magang',
-                    'updated_at' => now(),
-                ]);
-
-            \Log::info('Approve Contract - Hasil update mahasiswa:', [
-                'mahasiswa_id' => $this->mahasiswa->id,
-                'rows_affected' => $mahasiswaUpdated,
-            ]);
+            app(ApproveKontrakMagang::class)->handle(
+                $this->kontrakMagang->id,
+                $this->dosen_selected,
+                $finalKeterangan,
+            );
         });
 
         // Refresh data setelah update dengan force reload dari database
@@ -172,32 +163,10 @@ $rejectContract = function () {
         $finalRejectionReason = "Ditolak oleh {$adminName} pada " . now()->format('d M Y H:i') . '. Alasan: ' . $this->rejection_reason;
 
         DB::transaction(function () use ($finalRejectionReason) {
-            // Update menggunakan query builder untuk memastikan
-            $updated = DB::table('kontrak_magang')
-                ->where('id', $this->kontrakMagang->id)
-                ->update([
-                    'status' => 'ditolak',
-                    'keterangan' => $finalRejectionReason,
-                    'updated_at' => now(),
-                ]);
-
-            \Log::info('Reject Contract - Hasil update kontrak:', [
-                'contract_id' => $this->kontrakMagang->id,
-                'rows_affected' => $updated,
-            ]);
-
-            // Update status mahasiswa kembali ke 'belum_magang'
-            $mahasiswaUpdated = DB::table('mahasiswa')
-                ->where('id', $this->mahasiswa->id)
-                ->update([
-                    'status_magang' => 'belum magang',
-                    'updated_at' => now(),
-                ]);
-
-            \Log::info('Reject Contract - Hasil update mahasiswa:', [
-                'mahasiswa_id' => $this->mahasiswa->id,
-                'rows_affected' => $mahasiswaUpdated,
-            ]);
+            app(RejectKontrakMagang::class)->handle(
+                $this->kontrakMagang->id,
+                $finalRejectionReason,
+            );
         });
 
         // Refresh data setelah update dengan force reload dari database
@@ -452,12 +421,6 @@ $showRejectionModal = function () {
                         <flux:field>
                             <flux:label>Dosen Pembimbing</flux:label>
                             <flux:select wire:model.live="dosen_selected" placeholder="Pilih Dosen Pembimbing">
-                                @php
-                                    $dosenList = DosenPembimbing::select('id', 'nama', 'nidn')
-                                        ->whereNotNull('nama')
-                                        ->orderBy('nama', 'asc')
-                                        ->get();
-                                @endphp
                                 @foreach ($dosenList as $dosen)
                                     <flux:select.option value="{{ $dosen->id }}">
                                         {{ $dosen->nama }}{{ $dosen->nidn ? " (NIDN: {$dosen->nidn})" : '' }}

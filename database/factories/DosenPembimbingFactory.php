@@ -2,12 +2,13 @@
 
 namespace Database\Factories;
 
-use Illuminate\Database\Eloquent\Factories\Factory;
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\DosenPembimbing;
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\DosenPembimbing>
+ * @extends Factory<DosenPembimbing>
  */
 class DosenPembimbingFactory extends Factory
 {
@@ -21,11 +22,18 @@ class DosenPembimbingFactory extends Factory
     public function definition(): array
     {
         return [
+            'tenant_id' => BelongsToTenant::defaultTenantId(),
             'nama' => $this->faker->name(),
             'nidn' => (string) $this->faker->unique()->numerify(str_repeat('#', 10)),
-            'password' => Hash::make('dosen123'),
             'jenis_kelamin' => $this->faker->randomElement(['L', 'P']),
             'foto' => $this->faker->imageUrl(640, 480, 'people', true, 'Dosen Pembimbing', true),
         ];
+    }
+
+    public function configure()
+    {
+        return $this->afterMaking(function ($model) {
+            $model->forceFill(['password' => Hash::make('dosen123')]);
+        });
     }
 }

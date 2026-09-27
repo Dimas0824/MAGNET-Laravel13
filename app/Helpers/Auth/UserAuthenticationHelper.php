@@ -2,6 +2,7 @@
 
 namespace App\Helpers\Auth;
 
+use App\Models\UserBase;
 use Illuminate\Support\Facades\Auth;
 
 class UserAuthenticationHelper
@@ -12,10 +13,10 @@ class UserAuthenticationHelper
             if (Auth::guard($role)->check()) {
 
                 /**
-                 * @var \App\Models\UserBase $user
+                 * @var UserBase $user
                  */
                 $user = Auth::guard($role)->user();
-                
+
                 return $user->getRoleName();
             }
         }

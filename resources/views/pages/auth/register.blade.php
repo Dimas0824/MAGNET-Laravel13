@@ -1,79 +1,24 @@
 <?php
 
-use function Livewire\Volt\{layout, rules, state};
-use Illuminate\Auth\Events\Registered;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
-use App\Models\Mahasiswa;
+use function Livewire\Volt\{layout, state, form};
+use App\Actions\Auth\RegisterMahasiswa;
+use App\Livewire\Forms\RegisterForm;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
 
 layout('components.layouts.guest.with-navbar');
 
-state([
-    'nim',
-    'nama',
-    'email',
-    'jurusan' => 'Teknologi Informasi',
-    'program_studi',
-    'angkatan',
-    'jenis_kelamin',
-    'tanggal_lahir',
-    'alamat',
-    'password',
-    'password_confirmation'
-]);
+form(RegisterForm::class);
 
-rules([
-    'nim' => ['required', 'string', 'min:10', 'regex:/^[0-9]+$/'],
-    'nama' => ['required', 'string', 'max:255'],
-    'email' => ['required', 'string', 'email', 'max:255', 'unique:mahasiswa'],
-    'program_studi' => ['required', 'string'],
-    'angkatan' => ['required', 'numeric', 'min:1', 'max:100'],
-    'jenis_kelamin' => ['required', 'in:L,P'],
-    'tanggal_lahir' => ['required', 'date', 'before:today'],
-    'alamat' => ['required', 'string', 'max:500'],
-    'password' => ['required', 'string', 'confirmed', Password::default()],
-])->messages([
-    'nim.required' => 'NIM tidak boleh kosong.',
-    'nim.min' => 'NIM harus terdiri dari minimal 10 karakter.',
-    'nim.regex' => 'NIM hanya boleh terdiri dari angka.',
-    'nama.required' => 'Nama lengkap tidak boleh kosong.',
-    'email.required' => 'Email tidak boleh kosong.',
-    'email.email' => 'Format email tidak valid.',
-    'email.unique' => 'Email sudah terdaftar.',
-    'program_studi.required' => 'Program studi harus dipilih.',
-    'angkatan.required' => 'Angkatan tidak boleh kosong.',
-    'angkatan.numeric' => 'Angkatan harus berupa angka.',
-    'jenis_kelamin.required' => 'Jenis kelamin harus dipilih.',
-    'tanggal_lahir.required' => 'Tanggal lahir tidak boleh kosong.',
-    'tanggal_lahir.before' => 'Tanggal lahir harus sebelum hari ini.',
-    'alamat.required' => 'Alamat tidak boleh kosong.',
-    'password.required' => 'Password tidak boleh kosong.',
-    'password.min' => 'Password harus terdiri dari minimal 8 karakter.',
-    'password.confirmed' => 'Konfirmasi password tidak cocok.',
+state([
+    'jurusan' => 'Teknologi Informasi',
 ]);
 
 $register = function (): void {
     try {
-        $validated = $this->validate();
+        $this->form->validate();
 
-        $mahasiswa = Mahasiswa::create([
-            'nama' => $this->nama,
-            'nim' => $this->nim,
-            'email' => $this->email,
-            'password' => Hash::make($this->password),
-            'jurusan' => $this->jurusan,
-            'program_studi' => $this->program_studi,
-            'angkatan' => $this->angkatan,
-            'jenis_kelamin' => $this->jenis_kelamin,
-            'tanggal_lahir' => $this->tanggal_lahir,
-            'alamat' => $this->alamat,
-        ]);
-
-        event(new Registered($mahasiswa));
-
-        Auth::guard('mahasiswa')->login($mahasiswa);
+        app(RegisterMahasiswa::class)->handle($this->form->all());
 
         session()->flash('success', 'Registrasi berhasil! Selamat datang.');
 
@@ -81,10 +26,10 @@ $register = function (): void {
     } catch (ValidationException $e) {
         throw $e;
     } catch (\Exception $e) {
-        Log::error('Registration failed: ' . $e->getMessage(), [
-            'email' => $this->email,
-            'nim' => $this->nim,
-            'exception' => $e
+        Log::error('Registration failed: '.$e->getMessage(), [
+            'email' => $this->form->email,
+            'nim' => $this->form->nim,
+            'exception' => $e,
         ]);
 
         session()->flash('error', 'Terjadi kesalahan saat mendaftar. Silakan coba lagi.');
@@ -156,7 +101,7 @@ $register = function (): void {
                                 <flux:label class="text-sm font-medium text-gray-700 mb-2">
                                     NIM <span class="text-red-500">*</span>
                                 </flux:label>
-                                <flux:input wire:model="nim" type="text" required placeholder="Contoh: 2022110001"
+                                <flux:input wire:model="form.nim" type="text" required placeholder="Contoh: 2022110001"
                                     class="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base" />
                                 <flux:error name="nim" class="text-red-500 text-sm mt-1" />
                             </flux:field>
@@ -165,7 +110,7 @@ $register = function (): void {
                                 <flux:label class="text-sm font-medium text-gray-700 mb-2">
                                     Nama Lengkap <span class="text-red-500">*</span>
                                 </flux:label>
-                                <flux:input wire:model="nama" type="text" required
+                                <flux:input wire:model="form.nama" type="text" required
                                     placeholder="Nama lengkap sesuai KTM"
                                     class="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base" />
                                 <flux:error name="nama" class="text-red-500 text-sm mt-1" />
@@ -175,7 +120,7 @@ $register = function (): void {
                                 <flux:label class="text-sm font-medium text-gray-700 mb-2">
                                     Email <span class="text-red-500">*</span>
                                 </flux:label>
-                                <flux:input wire:model="email" type="email" required placeholder="email@contoh.com"
+                                <flux:input wire:model="form.email" type="email" required placeholder="email@contoh.com"
                                     class="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base" />
                                 <flux:error name="email" class="text-red-500 text-sm mt-1" />
                             </flux:field>
@@ -206,7 +151,7 @@ $register = function (): void {
                                 <flux:label class="text-sm font-medium text-gray-700 mb-2">
                                     Program Studi <span class="text-red-500">*</span>
                                 </flux:label>
-                                <flux:select wire:model="program_studi" required>
+                                <flux:select wire:model="form.program_studi" required>
                                     <flux:select.option value="" default>Pilih program studi
                                     </flux:select.option>
                                     <flux:select.option value="D4 Teknik Informatika" selected>D4 Teknik Informatika
@@ -223,7 +168,7 @@ $register = function (): void {
                                 <flux:label class="text-sm font-medium text-gray-700 mb-2">
                                     Angkatan <span class="text-red-500">*</span>
                                 </flux:label>
-                                <flux:input wire:model="angkatan" type="number" required min="1"
+                                <flux:input wire:model="form.angkatan" type="number" required min="1"
                                     placeholder="contoh: 23"
                                     class="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base" />
                                 <flux:error name="angkatan" class="text-red-500 text-sm mt-1" />
@@ -251,7 +196,7 @@ $register = function (): void {
                                 <flux:label class="text-sm font-medium text-gray-700 mb-2">
                                     Jenis Kelamin <span class="text-red-500">*</span>
                                 </flux:label>
-                                <flux:select wire:model="jenis_kelamin">
+                                <flux:select wire:model="form.jenis_kelamin">
                                     <flux:select.option value="" default>Pilih jenis kelamin</flux:select.option>
                                     <flux:select.option value="L">Laki-laki</flux:select.option>
                                     <flux:select.option value="P">Perempuan</flux:select.option>
@@ -264,7 +209,7 @@ $register = function (): void {
                                     Tanggal Lahir <span class="text-red-500">*</span>
                                 </flux:label>
                                 <div class="relative">
-                                    <flux:input wire:model="tanggal_lahir" type="date" required
+                                    <flux:input wire:model="form.tanggal_lahir" type="date" required
                                         max="{{ date('Y-m-d') }}"
                                         class="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
                                         style="color-scheme: light;"
@@ -278,7 +223,7 @@ $register = function (): void {
                             <flux:label class="text-sm font-medium text-gray-700 mb-2">
                                 Alamat Lengkap <span class="text-red-500">*</span>
                             </flux:label>
-                            <flux:textarea wire:model="alamat" required
+                            <flux:textarea wire:model="form.alamat" required
                                 placeholder="Masukkan alamat lengkap domisili Anda"
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 min-h-[80px] sm:min-h-[100px] resize-none text-sm sm:text-base" />
                             <flux:error name="alamat" class="text-red-500 text-sm mt-1" />
@@ -306,7 +251,7 @@ $register = function (): void {
                                 <flux:label class="text-sm font-medium text-gray-700 mb-2">
                                     Password <span class="text-red-500">*</span>
                                 </flux:label>
-                                <flux:input wire:model="password" type="password" required
+                                <flux:input wire:model="form.password" type="password" required
                                     placeholder="Masukkan password" viewable
                                     class="w-full pr-10 sm:pr-10 px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base" />
                                 <div class="mt-2 p-2 sm:p-3 bg-blue-50 rounded-lg">
@@ -324,7 +269,7 @@ $register = function (): void {
                                 <flux:label class="text-sm font-medium text-gray-700 mb-2">
                                     Konfirmasi Password <span class="text-red-500">*</span>
                                 </flux:label>
-                                <flux:input wire:model="password_confirmation" type="password" required
+                                <flux:input wire:model="form.password_confirmation" type="password" required
                                     placeholder="Ulangi password" viewable
                                     class="w-full pr-10 sm:pr-10 px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base" />
                                 <flux:error name="password_confirmation" class="text-red-500 text-sm mt-1" />

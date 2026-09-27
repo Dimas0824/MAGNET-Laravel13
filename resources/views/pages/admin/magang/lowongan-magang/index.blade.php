@@ -1,7 +1,11 @@
 <?php
 
-use function Livewire\Volt\{layout, state, with, usesPagination};
 use App\Models\LowonganMagang;
+
+use function Livewire\Volt\layout;
+use function Livewire\Volt\state;
+use function Livewire\Volt\usesPagination;
+use function Livewire\Volt\with;
 
 layout('components.layouts.user.main');
 
@@ -18,12 +22,12 @@ with(function () {
                 'perusahaan' => function ($query) {
                     $query->select('id', 'nama');
                 },
-                'lokasi_magang' => function ($query) {
+                'lokasiMagang' => function ($query) {
                     $query->select('id', 'lokasi');
                 },
                 'pekerjaan' => function ($query) {
                     $query->select('id', 'nama');
-                }
+                },
             ])
             ->withCount(['kontrak_magang as jumlah_pendaftar'])
             ->orderBy('created_at', 'desc')
@@ -31,9 +35,9 @@ with(function () {
     ];
 });
 
-$goToSpecificPage = fn(int $page) => $this->setPage($page);
-$goToPrevPage = fn() => $this->previousPage();
-$goToNextPage = fn() => $this->nextPage();
+$goToSpecificPage = fn (int $page) => $this->setPage($page);
+$goToPrevPage = fn () => $this->previousPage();
+$goToNextPage = fn () => $this->nextPage();
 
 ?>
 
@@ -86,7 +90,7 @@ $goToNextPage = fn() => $this->nextPage();
                         </td>
                         <td class="px-6 py-3">{{ $lowongan['perusahaan']['nama'] }}</td>
                         <td class="px-6 py-3">{{ $lowongan['pekerjaan']['nama'] }}</td>
-                        <td class="px-6 py-3">{{ $lowongan['lokasi_magang']['lokasi'] }}</td>
+                        <td class="px-6 py-3">{{ $lowongan['lokasiMagang']['lokasi'] }}</td>
                         <td class="px-6 py-3">
                             @php
                                 $badgeColor = match ($lowongan['status']) {

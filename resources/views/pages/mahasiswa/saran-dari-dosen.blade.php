@@ -1,8 +1,12 @@
 <?php
-use function Livewire\Volt\{layout, state, mount, computed};
-use App\Models\UmpanBalikMagang;
 use App\Models\KontrakMagang;
 use App\Models\Mahasiswa;
+use App\Models\UmpanBalikMagang;
+
+use function Livewire\Volt\computed;
+use function Livewire\Volt\layout;
+use function Livewire\Volt\mount;
+use function Livewire\Volt\state;
 
 layout('components.layouts.user.main');
 
@@ -20,22 +24,22 @@ mount(function () {
     $this->page = request('page', 1);
 });
 
-$komentarDosen = computed(function () {
-    $kontrakMagang = KontrakMagang::where('mahasiswa_id', $this->mahasiswa_id)->exists();
-
-    if (!$kontrakMagang) {
-        return collect();
-    }
-
-    $query = UmpanBalikMagang::with(['kontrakMagang.mahasiswa', 'kontrakMagang.dosenPembimbing', 'kontrakMagang.lowonganMagang.perusahaan'])->whereHas('kontrakMagang', function ($query) {
+$komentarDosenQuery = function () {
+    return UmpanBalikMagang::with(['kontrakMagang.mahasiswa', 'kontrakMagang.dosenPembimbing', 'kontrakMagang.lowonganMagang.perusahaan'])->whereHas('kontrakMagang', function ($query) {
         $query->where('mahasiswa_id', $this->mahasiswa_id);
     });
+};
+
+// Query-level pagination: only the current page's rows are fetched from the
+// database instead of loading every row into PHP and slicing the collection.
+$paginatedKomentar = computed(function () {
+    $query = $this->komentarDosenQuery();
 
     // Filter by search
     if ($this->search) {
         $query->where(function ($q) {
-            $q->where('komentar', 'like', '%' . $this->search . '%')->orWhereHas('kontrakMagang.dosenPembimbing', function ($subQ) {
-                $subQ->where('nama', 'like', '%' . $this->search . '%');
+            $q->where('komentar', 'like', '%'.$this->search.'%')->orWhereHas('kontrakMagang.dosenPembimbing', function ($subQ) {
+                $subQ->where('nama', 'like', '%'.$this->search.'%');
             });
         });
     }
@@ -60,42 +64,53 @@ $komentarDosen = computed(function () {
     // Sort
     $query->orderBy('tanggal', $this->sort === 'newest' ? 'desc' : 'asc');
 
-    return $query->get();
+    // Paginate at the database level. The page is driven by the component
+    // state (goToPage / updateFilter / ...) rather than the request query.
+    return $query->paginate($this->perPage, ['*'], 'page', $this->page);
 });
 
-$groupedPaginatedKomentar = computed(function () {
-    // Group the paginated comments for display
-    return $this->paginatedKomentar->groupBy(function ($item) {
-        $date = \Carbon\Carbon::parse($item->tanggal);
-        $now = now();
-
-        if ($date->isToday()) {
-            return 'Hari Ini';
-        } elseif ($date->isYesterday()) {
-            return 'Kemarin';
-        } elseif ($date->isCurrentWeek()) {
-            return 'Minggu Ini';
-        } elseif ($date->isCurrentMonth()) {
-            return 'Bulan Ini';
-        } elseif ($date->isLastMonth()) {
-            return 'Bulan Lalu';
-        } else {
-            return $date->translatedFormat('F Y');
-        }
-    });
+// Counts are computed once from the database rather than re-scanning the full
+// in-memory collection for every stat in the header.
+$totalKomentar = computed(function () {
+    return $this->komentarDosenQuery()->count();
 });
 
-$paginatedKomentar = computed(function () {
-    // Get all comments first (already sorted)
-    $allComments = $this->komentarDosen;
+$filteredKomentarCount = computed(function () {
+    $query = $this->komentarDosenQuery();
 
-    // Apply pagination directly to the sorted collection
-    $offset = ($this->page - 1) * $this->perPage;
-    return $allComments->slice($offset, $this->perPage);
+    [$count, $label] = match ($this->filter) {
+        'this_week' => [
+            (clone $query)->whereBetween('tanggal', [now()->startOfWeek(), now()->endOfWeek()])->count(),
+            'Minggu Ini',
+        ],
+        'this_month' => [
+            (clone $query)->whereMonth('tanggal', now()->month)->whereYear('tanggal', now()->year)->count(),
+            'Bulan Ini',
+        ],
+        'older' => [
+            (clone $query)->where('tanggal', '<', now()->subMonth())->count(),
+            'Lama',
+        ],
+        default => [
+            (clone $query)->where('tanggal', '>=', now()->startOfWeek())->count(),
+            'Total',
+        ],
+    };
+
+    return ['count' => $count, 'label' => $label];
+});
+
+$dosenPembimbingCount = computed(function () {
+    return UmpanBalikMagang::query()
+        ->join('kontrak_magang', 'umpan_balik_magang.kontrak_magang_id', '=', 'kontrak_magang.id')
+        ->join('dosen_pembimbing', 'kontrak_magang.dosen_id', '=', 'dosen_pembimbing.id')
+        ->where('kontrak_magang.mahasiswa_id', $this->mahasiswa_id)
+        ->distinct()
+        ->count('dosen_pembimbing.id');
 });
 
 $totalPages = computed(function () {
-    return ceil($this->komentarDosen->count() / $this->perPage);
+    return $this->paginatedKomentar->lastPage();
 });
 
 $hasKontrakMagang = computed(function () {
@@ -147,7 +162,7 @@ $goToPage = function ($page) {
                                 <div class="flex items-center gap-3">
                                     <flux:icon.chat-bubble-left class="w-6 h-6 text-blue-200" />
                                     <div>
-                                        <div class="text-2xl font-bold">{{ $this->komentarDosen->count() }}</div>
+                                        <div class="text-2xl font-bold">{{ $this->totalKomentar }}</div>
                                         <div class="text-sm text-blue-200">Total Komentar</div>
                                     </div>
                                 </div>
@@ -157,45 +172,9 @@ $goToPage = function ($page) {
                                     <flux:icon.calendar-days class="w-6 h-6 text-blue-200" />
                                     <div>
                                         <div class="text-2xl font-bold">
-                                            @php
-                                                $filteredCount = 0;
-                                                $filterLabel = '';
-
-                                                switch ($this->filter) {
-                                                    case 'this_week':
-                                                        $filteredCount = $this->komentarDosen
-                                                            ->where('tanggal', '>=', now()->startOfWeek())
-                                                            ->where('tanggal', '<=', now()->endOfWeek())
-                                                            ->count();
-                                                        $filterLabel = 'Minggu Ini';
-                                                        break;
-                                                    case 'this_month':
-                                                        $filteredCount = $this->komentarDosen
-                                                            ->filter(function ($item) {
-                                                                $date = \Carbon\Carbon::parse($item->tanggal);
-                                                                return $date->month === now()->month &&
-                                                                    $date->year === now()->year;
-                                                            })
-                                                            ->count();
-                                                        $filterLabel = 'Bulan Ini';
-                                                        break;
-                                                    case 'older':
-                                                        $filteredCount = $this->komentarDosen
-                                                            ->where('tanggal', '<', now()->subMonth())
-                                                            ->count();
-                                                        $filterLabel = 'Lama';
-                                                        break;
-                                                    default:
-                                                        $filteredCount = $this->komentarDosen
-                                                            ->where('tanggal', '>=', now()->startOfWeek())
-                                                            ->count();
-                                                        $filterLabel = 'Total';
-                                                        break;
-                                                }
-                                            @endphp
-                                            {{ $filteredCount }}
+                                            {{ $this->filteredKomentarCount['count'] }}
                                         </div>
-                                        <div class="text-sm text-blue-200">{{ $filterLabel }}</div>
+                                        <div class="text-sm text-blue-200">{{ $this->filteredKomentarCount['label'] }}</div>
                                     </div>
                                 </div>
                             </div>
@@ -204,7 +183,7 @@ $goToPage = function ($page) {
                                     <flux:icon.user-circle class="w-6 h-6 text-blue-200" />
                                     <div>
                                         <div class="text-2xl font-bold">
-                                            {{ $this->komentarDosen->pluck('kontrakMagang.dosenPembimbing.nama')->unique()->count() }}
+                                            {{ $this->dosenPembimbingCount }}
                                         </div>
                                         <div class="text-sm text-blue-200">Dosen Pembimbing</div>
                                     </div>
@@ -394,9 +373,9 @@ $goToPage = function ($page) {
                         <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mt-8">
                             <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
                                 <div class="text-sm text-gray-600">
-                                    Menampilkan {{ ($this->page - 1) * $this->perPage + 1 }} -
-                                    {{ min($this->page * $this->perPage, $this->komentarDosen->count()) }} dari
-                                    {{ $this->komentarDosen->count() }} komentar
+                                    Menampilkan {{ $this->paginatedKomentar->firstItem() }} -
+                                    {{ $this->paginatedKomentar->lastItem() }} dari
+                                    {{ $this->paginatedKomentar->total() }} komentar
                                 </div>
 
                                 <div class="flex items-center gap-2">
@@ -483,7 +462,7 @@ $goToPage = function ($page) {
             @endif
 
             <!-- Tips Section -->
-            @if ($this->komentarDosen->count() > 0)
+            @if ($this->totalKomentar > 0)
                 <div
                     class="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200 p-6 mt-8">
                     <div class="flex items-start gap-4">

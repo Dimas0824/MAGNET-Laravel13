@@ -14,7 +14,7 @@ class LowonganMagangSeeder extends Seeder
     public function run(): void
     {
         Storage::put(config('recommendation-system.preprocessing.alternatives_categorized_path'), '');
-        
+
         LowonganMagang::factory()->count(20)->create();
     }
 }

@@ -15,14 +15,17 @@ class FullMultiplicativeForm extends Model
     protected $fillable = [
         'mahasiswa_id',
         'lowongan_magang_id',
-        'score',
-        'rank'
+    ];
+
+    protected $casts = [
+        'score' => 'decimal:6',
     ];
 
     public function mahasiswa()
     {
         return $this->belongsTo(Mahasiswa::class, 'mahasiswa_id');
     }
+
     public function lowonganMagang()
     {
         return $this->belongsTo(LowonganMagang::class, 'lowongan_magang_id');

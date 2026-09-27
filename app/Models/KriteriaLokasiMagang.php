@@ -2,21 +2,18 @@
 
 namespace App\Models;
 
-use App\Models\BaseKriteriaModel;
-use App\Models\LokasiMagang;
-
 class KriteriaLokasiMagang extends BaseKriteriaModel
 {
-    protected $table = 'kriteria_lokasi_magang';
+    protected const CRITERIA_KEY = MahasiswaKriteria::KEY_LOKASI_MAGANG;
 
     protected $fillable = [
-        'lokasi_magang_id',
         'mahasiswa_id',
-        'rank',
-        'bobot'
+        'criteria_key',
+        'lokasi_magang_id',
     ];
 
-    public function lokasi_magang() {
+    public function lokasiMagang()
+    {
         return $this->belongsTo(LokasiMagang::class);
     }
 }

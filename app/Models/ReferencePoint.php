@@ -20,13 +20,23 @@ class ReferencePoint extends Model
         'jenis_magang',
         'bidang_industri',
         'lokasi_magang',
-        'rank'
+        'max_score',
+    ];
+
+    protected $casts = [
+        'pekerjaan' => 'decimal:6',
+        'open_remote' => 'decimal:6',
+        'jenis_magang' => 'decimal:6',
+        'bidang_industri' => 'decimal:6',
+        'lokasi_magang' => 'decimal:6',
+        'max_score' => 'decimal:6',
     ];
 
     public function mahasiswa()
     {
         return $this->belongsTo(Mahasiswa::class, 'mahasiswa_id');
     }
+
     public function lowonganMagang()
     {
         return $this->belongsTo(LowonganMagang::class, 'lowongan_magang_id');

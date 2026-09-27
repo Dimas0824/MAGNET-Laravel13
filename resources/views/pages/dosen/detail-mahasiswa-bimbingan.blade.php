@@ -7,7 +7,7 @@ use App\Models\LogMagang;
 use App\Models\UmpanBalikMagang;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use function Livewire\Volt\{layout, state, mount, computed, form};
+use function Livewire\Volt\{layout, state, mount, computed};
 
 state(['mahasiswaId', 'perPage' => 10, 'currentPage' => 1, 'showFeedbackModal' => false, 'showSuccessModal' => false]);
 
@@ -33,33 +33,40 @@ mount(function ($id) {
 $mahasiswaDetail = computed(function () {
     $dosenId = Auth::guard('dosen')->id();
 
-    $data = DB::table('mahasiswa as m')->join('kontrak_magang as km', 'm.id', '=', 'km.mahasiswa_id')->join('lowongan_magang as lm', 'km.lowongan_magang_id', '=', 'lm.id')->join('perusahaan as p', 'lm.perusahaan_id', '=', 'p.id')->join('pekerjaan as pk', 'lm.pekerjaan_id', '=', 'pk.id')->where('m.id', $this->mahasiswaId)->where('km.dosen_id', $dosenId)->select('m.id', 'm.nama', 'm.nim', 'm.program_studi', 'm.foto', 'p.nama as perusahaan', 'pk.nama as posisi', 'km.waktu_awal', 'km.waktu_akhir', 'km.id as kontrak_id')->first();
+    // Eloquent instead of a raw 5-table join: the kontrak is the pivot that
+    // links mahasiswa <-> lowongan -> perusahaan/pekerjaan.
+    $kontrak = KontrakMagang::with(['mahasiswa', 'lowonganMagang.perusahaan', 'lowonganMagang.pekerjaan'])
+        ->where('mahasiswa_id', $this->mahasiswaId)
+        ->where('dosen_id', $dosenId)
+        ->first();
 
-    if (!$data) {
+    if (! $kontrak) {
         abort(404, 'Kontrak magang tidak ditemukan');
     }
 
-    // Calculate duration and remaining days
-    $startDate = Carbon::parse($data->waktu_awal);
-    $endDate = Carbon::parse($data->waktu_akhir);
+    $mahasiswa = $kontrak->mahasiswa;
+    $lowongan = $kontrak->lowonganMagang;
+
+    $startDate = Carbon::parse($kontrak->waktu_awal);
+    $endDate = Carbon::parse($kontrak->waktu_akhir);
     $today = Carbon::today();
 
-    $totalDuration = $startDate->diffInDays($endDate);
-    $remainingDays = $today->diffInDays($endDate, false); // false allows negative values
+    $totalDuration = (int) $startDate->diffInDays($endDate);
+    $remainingDays = (int) $today->diffInDays($endDate, false); // false allows negative values
 
     return [
-        'id' => $data->id,
-        'nama' => $data->nama,
-        'nim' => $data->nim,
-        'program_studi' => $data->program_studi ?? '-',
-        'perusahaan' => $data->perusahaan ?? '-',
-        'posisi' => $data->posisi ?? '-',
-        'foto' => $data->foto ? asset('storage/' . $data->foto) : asset('default-profile.png'),
+        'id' => $mahasiswa->id,
+        'nama' => $mahasiswa->nama,
+        'nim' => $mahasiswa->nim,
+        'program_studi' => $mahasiswa->program_studi ?? '-',
+        'perusahaan' => $lowongan?->perusahaan?->nama ?? '-',
+        'posisi' => $lowongan?->pekerjaan?->nama ?? '-',
+        'foto' => $mahasiswa->foto ? asset('storage/'.$mahasiswa->foto) : asset('default-profile.png'),
         'waktu_awal' => $startDate->format('j F Y'),
         'waktu_akhir' => $endDate->format('j F Y'),
         'durasi' => "{$totalDuration} hari",
         'sisa_waktu' => $remainingDays > 0 ? "{$remainingDays} hari" : 'Sudah selesai',
-        'kontrak_id' => $data->kontrak_id,
+        'kontrak_id' => $kontrak->id,
     ];
 });
 

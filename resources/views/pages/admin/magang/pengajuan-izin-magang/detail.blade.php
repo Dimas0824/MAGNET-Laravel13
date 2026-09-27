@@ -164,18 +164,33 @@ $verifyFormRequest = function (string $status) {
                         <h2 class="text-lg font-semibold">Dokumen-dokumen magang</h2>
                         <div class="flex flex-col gap-4">
                             <flux:field>
-                                <flux:label>Daftar Riwayat Hidup</flux:label>
-                                <flux:input type="file" wire:model="" readonly class="caret-transparent" />
+                                <flux:label>Daftar Riwayat Hidup (CV)</flux:label>
+                                @if ($cv)
+                                    <a href="{{ route('berkas.download', ['berkas' => $berkasPengajuanMagang->id, 'type' => 'cv']) }}"
+                                        class="text-blue-600 underline" target="_blank">Unduh CV</a>
+                                @else
+                                    <span class="text-gray-400">Tidak ada</span>
+                                @endif
                             </flux:field>
 
                             <flux:field>
-                                <flux:label>CV</flux:label>
-                                <flux:input type="file" wire:model="" readonly class="caret-transparent" />
+                                <flux:label>Transkrip Nilai</flux:label>
+                                @if ($transkrip_nilai)
+                                    <a href="{{ route('berkas.download', ['berkas' => $berkasPengajuanMagang->id, 'type' => 'transkrip_nilai']) }}"
+                                        class="text-blue-600 underline" target="_blank">Unduh Transkrip Nilai</a>
+                                @else
+                                    <span class="text-gray-400">Tidak ada</span>
+                                @endif
                             </flux:field>
 
                             <flux:field>
                                 <flux:label>Portfolio</flux:label>
-                                <flux:input type="file" wire:model="" readonly class="caret-transparent" />
+                                @if ($portfolio)
+                                    <a href="{{ route('berkas.download', ['berkas' => $berkasPengajuanMagang->id, 'type' => 'portfolio']) }}"
+                                        class="text-blue-600 underline" target="_blank">Unduh Portfolio</a>
+                                @else
+                                    <span class="text-gray-400">Tidak ada</span>
+                                @endif
                             </flux:field>
                         </div>
                     </div>

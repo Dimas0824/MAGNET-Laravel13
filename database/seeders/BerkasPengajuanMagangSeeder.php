@@ -15,4 +15,3 @@ class BerkasPengajuanMagangSeeder extends Seeder
         BerkasPengajuanMagang::factory()->count(15)->create();
     }
 }
-

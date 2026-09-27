@@ -13,7 +13,6 @@ class FormPengajuanMagang extends Model
 
     protected $fillable = [
         'pengajuan_id',
-        'status',
         'keterangan',
     ];
 

@@ -2,25 +2,32 @@
 
 namespace App\Models;
 
-use App\Models\BerkasPengajuanMagang;
-use App\Models\KontrakMagang;
-use App\Models\UserBase;
+use App\Models\Concerns\Auditable;
+use App\Models\Concerns\BelongsToTenant;
+use App\Observers\AuditObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
+#[ObservedBy(AuditObserver::class)]
 class Mahasiswa extends UserBase
 {
+    use BelongsToTenant, Auditable, SoftDeletes;
+
     protected $table = 'mahasiswa';
 
     protected $fillable = [
+        'tenant_id',
+        'user_id',
         'nama',
         'nim',
         'email',
-        'password',
         'jenis_kelamin',
         'jurusan',
         'program_studi',
         'angkatan',
         'tanggal_lahir',
-        'status_magang',
         'alamat',
     ];
 
@@ -36,6 +43,14 @@ class Mahasiswa extends UserBase
     public function getRoleName(): string
     {
         return 'mahasiswa';
+    }
+
+    /**
+     * The registry identity backing this mahasiswa row.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 
     public function berkasPengajuanMagang()
@@ -76,5 +91,18 @@ class Mahasiswa extends UserBase
     public function encodedAlternatives()
     {
         return $this->hasMany(EncodedAlternatives::class);
+    }
+
+    /**
+     * Students whose internship is not yet finished.
+     *
+     * The stored enum value carries a space: 'selesai magang'. Filtering on the
+     * bare 'selesai' matched every row (a no-op), so this scope — and the dosen
+     * guidance view it mirrors — must exclude 'selesai magang'.
+     */
+    #[Scope]
+    protected function belumSelesai(Builder $query): void
+    {
+        $query->where('status_magang', '!=', 'selesai magang');
     }
 }

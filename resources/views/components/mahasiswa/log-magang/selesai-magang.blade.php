@@ -22,7 +22,7 @@ mount(function () {
 
     if ($this->mahasiswa) {
         $this->kontrak_magang = KontrakMagang::where('mahasiswa_id', $this->mahasiswa->id)
-            ->with(['lowonganMagang.perusahaan'])
+            ->with(['lowonganMagang.perusahaan', 'lowonganMagang.pekerjaan'])
             ->latest()
             ->first();
     }

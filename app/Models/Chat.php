@@ -2,21 +2,38 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Chat extends Model
 {
-    use HasFactory;
+    use HasFactory, MassPrunable;
+
+    public const SENDER_MAHASISWA = 'mahasiswa';
+
+    public const SENDER_DOSEN = 'dosen';
+
+    /** Retention window: chat rows are pruned after 548 days. */
+    public const RETENTION_DAYS = 548;
+
+    /**
+     * Rows eligible for pruning: older than the retention window.
+     */
+    public function prunable(): Builder
+    {
+        return static::where('created_at', '<=', now()->subDays(self::RETENTION_DAYS));
+    }
 
     /**
      * The attributes that are mass assignable.
      */
     protected $fillable = [
         'kontrak_magang_id',
-        'sender_id',
-        'receiver_id',
+        'sender_user_id',
+        'receiver_user_id',
         'message',
     ];
 
@@ -37,51 +54,127 @@ class Chat extends Model
     }
 
     /**
-     * Get sender (bisa mahasiswa atau dosen)
-     * Karena tidak ada sender_type, kita perlu menentukan berdasarkan kontrak
+     * The sender identity (registry-backed). Falls back to the kontrak+role
+     * resolution when a legacy row has no `sender_user_id` yet (expand phase).
      */
-    public function getSenderAttribute()
+    public function sender(): BelongsTo
     {
-        if ($this->kontrakMagang) {
-            // Jika sender_id sama dengan mahasiswa_id dari kontrak, maka sender adalah mahasiswa
-            if ($this->sender_id == $this->kontrakMagang->mahasiswa_id) {
-                return $this->kontrakMagang->mahasiswa;
-            } else {
-                return $this->kontrakMagang->dosenPembimbing;
-            }
+        return $this->belongsTo(User::class, 'sender_user_id');
+    }
+
+    /**
+     * The receiver identity (registry-backed), same legacy fallback.
+     */
+    public function receiver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'receiver_user_id');
+    }
+
+    /**
+     * Resolve the registry User for a participant, falling back to the kontrak
+     * + role when the FK column is still null on a legacy row.
+     */
+    public function resolveParticipant(string $which): ?User
+    {
+        $relation = $which === 'receiver' ? 'receiver' : 'sender';
+        $typeColumn = $which === 'receiver' ? 'receiver_type' : 'sender_type';
+
+        $user = $this->{$relation};
+
+        if ($user !== null) {
+            return $user;
         }
+
+        $kontrak = $this->kontrakMagang;
+
+        if (! $kontrak) {
+            return null;
+        }
+
+        $party = $this->{$typeColumn} === self::SENDER_MAHASISWA
+            ? $kontrak->mahasiswa
+            : $kontrak->dosenPembimbing;
+
+        return $party?->user;
+    }
+
+    /**
+     * The sender's role-table row for this conversation (mahasiswa or dosen),
+     * resolved through the kontrak + the registry FK.
+     */
+    public function senderPartyAttribute()
+    {
+        return $this->partyFor('sender');
+    }
+
+    /**
+     * The receiver's role-table row for this conversation.
+     */
+    public function receiverPartyAttribute()
+    {
+        return $this->partyFor('receiver');
+    }
+
+    /**
+     * Resolve the mahasiswa/dosen row a participant maps to, using the registry
+     * FK first (canonical) and falling back to the kontrak when resolving.
+     */
+    protected function partyFor(string $which): ?Model
+    {
+        $kontrak = $this->kontrakMagang;
+
+        if (! $kontrak) {
+            return null;
+        }
+
+        return $this->roleFor($which) === self::SENDER_MAHASISWA
+            ? $kontrak->mahasiswa
+            : $kontrak->dosenPembimbing;
+    }
+
+    /**
+     * The role ('mahasiswa'|'dosen') of a participant, derived from the registry
+     * FK compared against the kontrak's mahasiswa/dosen user_ids — no reliance
+     * on the dropped polymorphic type column.
+     */
+    public function roleFor(string $which = 'sender'): ?string
+    {
+        $column = $which === 'receiver' ? 'receiver_user_id' : 'sender_user_id';
+        $userId = $this->{$column};
+
+        if ($userId === null) {
+            return null;
+        }
+
+        $kontrak = $this->kontrakMagang;
+
+        if (! $kontrak) {
+            return null;
+        }
+
+        if ((int) $kontrak->mahasiswa?->user_id === (int) $userId) {
+            return self::SENDER_MAHASISWA;
+        }
+
+        if ((int) $kontrak->dosenPembimbing?->user_id === (int) $userId) {
+            return self::SENDER_DOSEN;
+        }
+
         return null;
     }
 
     /**
-     * Get receiver (bisa mahasiswa atau dosen)
-     */
-    public function getReceiverAttribute()
-    {
-        if ($this->kontrakMagang) {
-            // Jika receiver_id sama dengan mahasiswa_id dari kontrak, maka receiver adalah mahasiswa
-            if ($this->receiver_id == $this->kontrakMagang->mahasiswa_id) {
-                return $this->kontrakMagang->mahasiswa;
-            } else {
-                return $this->kontrakMagang->dosenPembimbing;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Scope untuk pesan antara dua user dalam kontrak tertentu
+     * Scope untuk pesan antara dua user dalam kontrak tertentu.
+     * Matches on the registry participants for this kontrak.
      */
     public function scopeBetweenUsers($query, $user1Id, $user2Id, $kontrakMagangId)
     {
         return $query->where('kontrak_magang_id', $kontrakMagangId)
             ->where(function ($q) use ($user1Id, $user2Id) {
-                $q->where(function ($subQ) use ($user1Id, $user2Id) {
-                    $subQ->where('sender_id', $user1Id)
-                        ->where('receiver_id', $user2Id);
-                })->orWhere(function ($subQ) use ($user1Id, $user2Id) {
-                    $subQ->where('sender_id', $user2Id)
-                        ->where('receiver_id', $user1Id);
+                $q->where(function ($inner) use ($user1Id, $user2Id) {
+                    $inner->where('sender_user_id', $user1Id)->where('receiver_user_id', $user2Id);
+                })->orWhere(function ($inner) use ($user1Id, $user2Id) {
+                    $inner->where('sender_user_id', $user2Id)->where('receiver_user_id', $user1Id);
                 });
             });
     }
@@ -99,10 +192,7 @@ class Chat extends Model
      */
     public function isSentByMahasiswa(): bool
     {
-        if ($this->kontrakMagang) {
-            return $this->sender_id == $this->kontrakMagang->mahasiswa_id;
-        }
-        return false;
+        return $this->roleFor('sender') === self::SENDER_MAHASISWA;
     }
 
     /**
@@ -110,9 +200,16 @@ class Chat extends Model
      */
     public function isSentByDosen(): bool
     {
-        if ($this->kontrakMagang) {
-            return $this->sender_id == $this->kontrakMagang->dosen_id;
-        }
-        return false;
+        return $this->roleFor('sender') === self::SENDER_DOSEN;
+    }
+
+    /**
+     * Whether the given viewer (identified by role) is the author.
+     *
+     * @param  string  $role  'mahasiswa' | 'dosen'
+     */
+    public function isMineFor(string $role): bool
+    {
+        return $this->roleFor('sender') === $role;
     }
 }

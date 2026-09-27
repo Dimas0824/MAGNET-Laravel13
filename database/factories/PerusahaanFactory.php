@@ -2,12 +2,13 @@
 
 namespace Database\Factories;
 
-use App\Models\Perusahaan;
 use App\Models\BidangIndustri;
+use App\Models\Concerns\BelongsToTenant;
+use App\Models\Perusahaan;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Perusahaan>
+ * @extends Factory<Perusahaan>
  */
 class PerusahaanFactory extends Factory
 {
@@ -20,20 +21,26 @@ class PerusahaanFactory extends Factory
      */
     public function definition(): array
     {
-        static $bidangIndustriIds = null;
-        $bidangIndustriIds ??= BidangIndustri::where('nama', '!=', 'Semua')
-                ->orderBy('id')
-                ->pluck('id')
-                ->toArray();
+        $bidangIndustriIds = BidangIndustri::where('nama', '!=', 'Semua')
+            ->orderBy('id')
+            ->pluck('id')
+            ->toArray();
 
         return [
+            'tenant_id' => BelongsToTenant::defaultTenantId(),
             'nama' => $this->faker->company(),
             'bidang_industri_id' => $this->faker->randomElement($bidangIndustriIds),
-            'lokasi' => $this->faker->address(),
+            'lokasi_magang_id' => \App\Models\LokasiMagang::query()->inRandomOrder()->value('id'),
             'kategori' => $this->faker->randomElement(['mitra', 'non_mitra']),
-            'rating' => $this->faker->optional()->randomFloat(1, 0, 5),
             'website' => $this->faker->url(),
-            'deskripsi' => $this->faker->paragraph()
+            'deskripsi' => $this->faker->paragraph(),
         ];
+    }
+
+    public function configure()
+    {
+        return $this->afterMaking(function ($model) {
+            $model->forceFill(['rating' => $this->faker->optional()->randomFloat(1, 0, 5)]);
+        });
     }
 }

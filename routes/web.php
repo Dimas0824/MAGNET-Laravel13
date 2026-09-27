@@ -1,11 +1,11 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Livewire\Volt\Volt;
 use App\Http\Controllers\PengajuanMagangController;
 use App\Http\Controllers\TemplateController;
+use Illuminate\Support\Facades\Route;
+use Livewire\Volt\Volt;
 
-require_once __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';
 
 Route::name('guest.')
     ->group(function () {
@@ -24,6 +24,10 @@ Route::middleware('role:admin,mahasiswa,dosen')
         Volt::route('profile', 'pages.user.profile')->name('profile');
 
         Route::get('template/pdf/{file_name}', [TemplateController::class, 'previewFile'])->name('template-view');
+
+        // Authorized download of PII documents from the private disk.
+        Route::get('berkas-pengajuan/{berkas}/{type}', [PengajuanMagangController::class, 'downloadBerkas'])
+            ->name('berkas.download');
     });
 
 Route::name('admin.')
@@ -44,7 +48,6 @@ Route::name('admin.')
                 Volt::route('data-pekerjaan', 'pages.admin.kelola-data-master.data-pekerjaan')->name('data-pekerjaan');
             });
 
-
         Route::prefix('magang')
             ->group(function () {
                 Volt::route('lowongan', 'pages.admin.magang.lowongan-magang.index')->name('data-lowongan');
@@ -60,11 +63,9 @@ Route::name('admin.')
                 Route::view('aturan-magang', 'pages.admin.magang.aturan-magang.index')->name('aturan-magang');
             });
 
-
         Volt::route('laporan-statistik-magang', 'pages.admin.laporan-statistik-magang')->name('laporan-statistik-magang');
         Route::view('evaluasi-sistem-rekomendasi', 'pages.admin.evaluasi-sistem')->name('evaluasi-sistem-rekomendasi');
     });
-
 
 Route::name('mahasiswa.')
     ->middleware('role:mahasiswa')
@@ -90,7 +91,6 @@ Route::name('mahasiswa.')
         Volt::route('detail-lowongan-magang/{id}', 'pages.mahasiswa.detail-lowongan-magang')->name('detail-lowongan-magang');
         Volt::route('profil-perusahaan/{id}', 'pages.mahasiswa.profil-perusahaan')->name('profil-perusahaan');
 
-        Route::view('notifikasi', 'pages.mahasiswa.notifikasi')->name('notifikasi');
         Volt::route('riwayat-rekomendasi', 'pages.mahasiswa.riwayat-rekomendasi.index')->name('riwayat-rekomendasi');
         Volt::route('riwayat-rekomendasi/detail', 'pages.mahasiswa.riwayat-rekomendasi.detail-rekomendasi')->name('detail-rekomendasi');
         Volt::route('saran-dari-dosen', 'pages.mahasiswa.saran-dari-dosen')->name('saran-dari-dosen');
