@@ -1,7 +1,6 @@
 <?php
 
-use App\Models\LowonganMagang;
-use App\Models\Mahasiswa;
+use App\Actions\Recommendation\LoadLowonganDetail;
 use App\Models\UlasanMagang;
 
 use function Livewire\Volt\computed;
@@ -16,6 +15,7 @@ layout('components.layouts.user.main');
 state([
     'lowongan',
     'lowonganId' => null,
+    'lowonganSerupa',
 
     'isDataNotFound' => false,
     'isSaved' => false,
@@ -25,10 +25,12 @@ state([
 mount(function (int $id) {
     $this->lowonganId = $id;
 
-    try {
-        $this->lowongan = LowonganMagang::with(['perusahaan.bidangIndustri', 'pekerjaan', 'lokasiMagang'])
-            ->findOrFail($id);
-    } catch (\Exception $e) {
+    $result = (new LoadLowonganDetail)->handle($id);
+
+    $this->lowongan = $result['lowongan'];
+    $this->lowonganSerupa = $result['lowonganSerupa'];
+
+    if (! $result['lowongan']) {
         $this->isDataNotFound = true;
     }
 });
@@ -45,24 +47,6 @@ $ulasanMagang = computed(function () {
             })
             ->orderBy('created_at', 'desc')
             ->limit(3)
-            ->get();
-    } catch (\Exception $e) {
-        return collect();
-    }
-});
-
-$lowonganSerupa = computed(function () {
-    try {
-        $currentLowongan = $this->lowongan;
-        if (! $currentLowongan) {
-            return collect();
-        }
-
-        return LowonganMagang::with(['perusahaan', 'pekerjaan'])
-            ->where('id', '!=', $this->lowonganId)
-            ->where('pekerjaan_id', $currentLowongan->pekerjaan_id)
-            ->where('status', 'buka')
-            ->limit(4)
             ->get();
     } catch (\Exception $e) {
         return collect();
