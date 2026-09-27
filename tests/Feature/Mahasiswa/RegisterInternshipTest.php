@@ -31,13 +31,12 @@ use Livewire\Volt\Volt;
 |     industri, pekerjaan, lokasi and lowongan
 |   - the caller flashes the "Pendaftaran magang berhasil dikirim!" message
 |
-| NOTE (latent bug, deliberately preserved in spirit, see the action): the
-| source closure wrote three columns that no longer exist on the current
-| schema — perusahaan.lokasi, lowongan_magang.surat_izin_path and
-| kontrak_magang.tanggal_daftar — so the component's try/catch swallowed a
-| QueryException and registration never persisted. The action keeps the same
-| intent while skipping/remapping the stale columns, so registration now
-| actually lands. This is documented, not "fixed" as source logic.
+| NOTE: the source closure also wrote `tanggal_daftar` and `surat_izin_path`
+| on `kontrak_magang`; both columns now exist (migration
+| 2026_09_28_000200 adds `tanggal_daftar` and `surat_izin_path` to the table)
+| and the action persists them unconditionally: `tanggal_daftar` is always set
+| at registration, and `surat_izin_path` carries the stored permit for the
+| non-partner (upload) path while remaining null for the partner path.
 |
 */
 
@@ -103,7 +102,8 @@ it('registers the internship: kontrak/berkas created, files stored, status set',
         ->and($kontrak->lowongan_magang_id)->toBe($lowongan->id)
         ->and($kontrak->status)->toBe('menunggu_persetujuan')
         ->and($kontrak->waktu_awal)->not->toBeNull()
-        ->and($kontrak->waktu_akhir->isFuture())->toBeTrue();
+        ->and($kontrak->waktu_akhir->isFuture())->toBeTrue()
+        ->and($kontrak->tanggal_daftar)->not->toBeNull();
 
     expect(KontrakMagang::where('mahasiswa_id', $mahasiswa->id)->count())->toBe(1);
 
@@ -152,7 +152,30 @@ it('stores the surat izin and force-creates the company chain for non-partner', 
     // --- Kontrak bound to the new lowongan, pending approval ----------------
     $kontrak->refresh();
     expect($kontrak->lowongan_magang_id)->toBe($lowongan->id)
-        ->and($kontrak->status)->toBe('menunggu_persetujuan');
+        ->and($kontrak->status)->toBe('menunggu_persetujuan')
+        ->and($kontrak->surat_izin_path)->toBe($action->suratIzinPath);
+});
+
+it('sets tanggal_daftar but leaves surat_izin_path null for the partner path with no upload', function () {
+    $mahasiswa = registerableMahasiswa();
+    ['perusahaan' => $perusahaan, 'lowongan' => $lowongan] = mitraCompanyWithLowongan();
+
+    $action = new RegisterInternship(
+        mahasiswa: $mahasiswa,
+        companyType: 'partner',
+        selectedCompanyId: $perusahaan->id,
+        selectedLowonganId: $lowongan->id,
+        companyName: '',
+        companyAddress: '',
+        bidangIndustri: '',
+        lokasiMagang: 'Jakarta Pusat, DKI Jakarta',
+        suratIzinMagang: null,
+    );
+
+    $kontrak = $action->handle()->refresh();
+
+    expect($kontrak->tanggal_daftar)->not->toBeNull()
+        ->and($kontrak->surat_izin_path)->toBeNull();
 });
 
 it('wires the Volt component through the action end to end', function () {

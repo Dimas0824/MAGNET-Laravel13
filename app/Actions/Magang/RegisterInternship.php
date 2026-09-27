@@ -11,7 +11,6 @@ use App\Models\Mahasiswa;
 use App\Models\Pekerjaan;
 use App\Models\Perusahaan;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * Register a student for an internship: resolve (or create) the target
@@ -27,24 +26,29 @@ use Illuminate\Support\Facades\Schema;
  * an active contract"), validation, the flash messages and the form reset;
  * this action only performs the domain write and returns the new kontrak.
  *
- * ── Latent bugs deliberately NOT fixed (documented for the record) ──────────
- * The source `$save` closure wrote three columns that do not exist on the
- * current schema:
+ * ── Stale source writes, reconciled ─────────────────────────────────────────
+ * The source `$save` closure wrote three columns. Two are resolved here:
  *
  *   1. `perusahaan.lokasi`   — the column was renamed/moved to the
  *                              `lokasi_magang_id` FK (migration
  *                              2026_09_27_001500_drop_lokasi_from_perusahaan),
- *   2. `lowongan_magang.surat_izin_path` — never migrated,
- *   3. `kontrak_magang.tanggal_daftar`   — never migrated.
+ *                              so the address is carried on the linked
+ *                              LokasiMagang row (and `deskripsi`) instead,
+ *   2. `lowongan_magang.surat_izin_path` — never migrated; the upload is kept
+ *                              on the `public` disk and the path is persisted
+ *                              on `kontrak_magang.surat_izin_path` instead,
+ *   3. `kontrak_magang.tanggal_daftar`   — now migrated (2026_09_28_000200)
+ *                              and persisted unconditionally below.
  *
- * Because Eloquent strict mode rejects unknown columns, every one of these
- * writes raised a QueryException that the component's try/catch swallowed into
- * a "Terjadi kesalahan saat menyimpan data" flash — i.e. registration NEVER
- * persisted. This action keeps the same intent while guarding/remapping the
- * stale columns (see the comments below) so the documented behaviour —
- * "kontrak/berkas created, files stored, status set" — actually lands. The
- * source logic was replaced wholesale by this action, so nothing here "fixes"
- * the blade file; the blade file is simply no longer responsible for the write.
+ * Because Eloquent strict mode rejects unknown columns, the stale writes in
+ * the blade source raised a QueryException that the component's try/catch
+ * swallowed into a "Terjadi kesalahan saat menyimpan data" flash — i.e.
+ * registration never persisted. This action keeps the same intent while
+ * guarding/remapping the stale columns (see the comments below) so the
+ * documented behaviour — "kontrak/berkas created, files stored, status set" —
+ * actually lands. The source logic was replaced wholesale by this action, so
+ * nothing here "fixes" the blade file; the blade file is simply no longer
+ * responsible for the write.
  */
 class RegisterInternship implements Action
 {
@@ -98,11 +102,14 @@ class RegisterInternship implements Action
             'waktu_awal' => now(),
             'waktu_akhir' => now()->addMonths(3),
             'status' => 'menunggu_persetujuan', // pending admin approval
-            // NOTE: the source also wrote `tanggal_daftar => now()`, but the
-            // `kontrak_magang` table has no such column (latent bug #3 above);
-            // created_at already records the registration time, so the
-            // timestamp is preserved wherever a schema does carry the column.
-            ...($this->kontrakHasTanggalDaftar() ? ['tanggal_daftar' => now()] : []),
+            // Registration timestamp, persisted unconditionally — the column is
+            // migrated (2026_09_28_000200) so the source's `tanggal_daftar`
+            // write now lands as intended.
+            'tanggal_daftar' => now(),
+            // The stored permit path for the non-partner (upload) path; the
+            // partner path never uploads, so this stays null (column nullable).
+            // Set inside createNonPartnerLowonganId() before this create runs.
+            'surat_izin_path' => $this->suratIzinPath,
         ]);
     }
 
@@ -187,15 +194,5 @@ class RegisterInternship implements Action
         ]);
 
         return $magang->id;
-    }
-
-    /**
-     * Whether `kontrak_magang` still carries the legacy `tanggal_daftar`
-     * column, so the ported write never turns into a strict-mode "unknown
-     * column" QueryException on schemas that dropped it.
-     */
-    private function kontrakHasTanggalDaftar(): bool
-    {
-        return Schema::hasColumn('kontrak_magang', 'tanggal_daftar');
     }
 }
