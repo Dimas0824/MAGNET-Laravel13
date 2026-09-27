@@ -108,13 +108,14 @@ it('composes buka and forPerusahaan like the inline chain', function () {
         ->and($viaScope)->toBe($oracle);
 });
 
-it('scope belumSelesai returns the same ids as the inline where status_magang not selesai chain', function () {
-    // Mirrors resources/views/pages/dosen/mahasiswa-bimbingan.blade.php:22
-    // (->where('mahasiswa.status_magang', '!=', 'selesai')).
-    //
-    // NOTE: the stored enum value is 'selesai magang' (with a space), so the
-    // inline `!= 'selesai'` chain is a no-op that returns EVERY row. The scope
-    // must reproduce that exact (bug-for-bug) behaviour — parity, not intent.
+it('scope belumSelesai excludes students with status_magang selesai magang', function () {
+    // Was a bug-for-bug parity case: the inline chain
+    //   ->where('mahasiswa.status_magang', '!=', 'selesai')
+    // (resources/views/pages/dosen/mahasiswa-bimbingan.blade.php:22) matched
+    // EVERY row because the stored enum value is 'selesai magang' (with a
+    // space). The scope + view were fixed to use the intended value, so this
+    // case now asserts INTENT rather than the old no-op. See
+    // tests/Feature/Models/ScopeIntentTest.php for the dedicated intent test.
     $aktif = Mahasiswa::factory()->create();
     $aktif->forceFill(['status_magang' => 'sedang magang'])->save();
 
@@ -124,13 +125,6 @@ it('scope belumSelesai returns the same ids as the inline where status_magang no
     $selesai = Mahasiswa::factory()->create();
     $selesai->forceFill(['status_magang' => 'selesai magang'])->save();
 
-    $oracle = Mahasiswa::query()
-        ->where('status_magang', '!=', 'selesai')
-        ->pluck('id')
-        ->sort()
-        ->values()
-        ->all();
-
     $viaScope = Mahasiswa::query()
         ->belumSelesai()
         ->pluck('id')
@@ -138,7 +132,7 @@ it('scope belumSelesai returns the same ids as the inline where status_magang no
         ->values()
         ->all();
 
-    // The inline chain returns all three rows (see note above); parity holds.
-    expect($oracle)->toEqualCanonicalizing([$aktif->id, $belum->id, $selesai->id])
-        ->and($viaScope)->toBe($oracle);
+    // The finished student is now excluded (intended behaviour).
+    expect($viaScope)->toEqualCanonicalizing([$aktif->id, $belum->id])
+        ->and($viaScope)->not->toContain($selesai->id);
 });

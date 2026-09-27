@@ -19,7 +19,7 @@ $mahasiswa = computed(function () {
         ->join('perusahaan', 'lowongan_magang.perusahaan_id', '=', 'perusahaan.id')
         ->join('pekerjaan', 'lowongan_magang.pekerjaan_id', '=', 'pekerjaan.id')
         ->where('kontrak_magang.dosen_id', $dosenId)
-        ->where('mahasiswa.status_magang', '!=', 'selesai')
+        ->where('mahasiswa.status_magang', '!=', 'selesai magang')
         ->orderBy('mahasiswa.nama', 'asc'); // Default sorting by name
 
     // Apply search filter

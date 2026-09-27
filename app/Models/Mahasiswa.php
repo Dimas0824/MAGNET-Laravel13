@@ -94,13 +94,15 @@ class Mahasiswa extends UserBase
     }
 
     /**
-     * Students whose internship is not yet finished. Mirrors the inline
-     * `->where('mahasiswa.status_magang', '!=', 'selesai')` chain in the dosen
-     * guidance view.
+     * Students whose internship is not yet finished.
+     *
+     * The stored enum value carries a space: 'selesai magang'. Filtering on the
+     * bare 'selesai' matched every row (a no-op), so this scope — and the dosen
+     * guidance view it mirrors — must exclude 'selesai magang'.
      */
     #[Scope]
     protected function belumSelesai(Builder $query): void
     {
-        $query->where('status_magang', '!=', 'selesai');
+        $query->where('status_magang', '!=', 'selesai magang');
     }
 }
