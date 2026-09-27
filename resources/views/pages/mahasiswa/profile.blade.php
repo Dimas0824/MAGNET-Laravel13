@@ -2,11 +2,9 @@
 
 use Flux\Flux;
 use function Livewire\Volt\{state, mount};
-use Illuminate\Support\Facades\Hash;
 use App\Models\{Mahasiswa, BidangIndustri, LokasiMagang, Pekerjaan};
-use App\Models\BaseKriteriaModel;
-use App\Helpers\DecisionMaking\ROC;
-use App\Events\MahasiswaPreferenceUpdated;
+use App\Livewire\Forms\{UpdateProfileForm, ChangePasswordForm};
+use App\Actions\Profile\{UpdateProfile, ChangePassword, SavePreference, SaveRanking};
 
 state([
     'mahasiswa',
@@ -170,23 +168,20 @@ $updatePersonalData = function () {
 
 $savePersonalData = function () {
     try {
-        $this->validate([
-            'nama' => 'required|string|max:255',
-            'nim' => 'required|string|max:20|unique:mahasiswa,nim,' . $this->mahasiswa->id,
-            'jurusan' => 'required|string|max:255',
-            'program_studi' => 'required|string|max:255',
-            'jenis_kelamin' => 'required|in:L,P',
-            'alamat' => 'required|string|max:500',
+        // Validate through the shared form object's rule definitions (W0-T06c).
+        // The runtime `unique:mahasiswa,nim,<id>` clause cannot live in a form
+        // attribute, so it is composed here and merged over the base rules.
+        $this->validate(UpdateProfileForm::rules() + [
+            'nim' => ['required', 'string', 'max:20', 'unique:mahasiswa,nim,' . $this->mahasiswa->id],
         ]);
 
-        $this->mahasiswa->update([
+        (new UpdateProfile)->handle($this->mahasiswa, [
             'nama' => $this->nama,
             'nim' => $this->nim,
             'jurusan' => $this->jurusan,
             'program_studi' => $this->program_studi,
             'jenis_kelamin' => $this->jenis_kelamin,
             'alamat' => $this->alamat,
-            'updated_at' => now(),
         ]);
 
         $this->showModal('success', 'Data Personal Berhasil Diperbarui', 'Data personal Anda telah berhasil diperbarui.');
@@ -217,62 +212,18 @@ $updatePreference = function () {
 
 $saveNewPreference = function () {
     try {
-        // Cari ID berdasarkan nama untuk bidang industri
-        $bidangIndustri = BidangIndustri::where('nama', $this->bidang_industri)->first();
-        if (!$bidangIndustri) {
-            throw new \Exception('Bidang Industri tidak ditemukan');
-        }
-
-        // Cari ID berdasarkan kategori_lokasi untuk lokasi magang
-        $lokasiMagang = LokasiMagang::where('kategori_lokasi', $this->lokasi_magang)->first();
-        if (!$lokasiMagang) {
-            throw new \Exception('Lokasi Magang tidak ditemukan');
-        }
-
-        // Cari ID berdasarkan nama untuk pekerjaan
-        $pekerjaan = Pekerjaan::where('nama', $this->pekerjaan)->first();
-        if (!$pekerjaan) {
-            throw new \Exception('Pekerjaan tidak ditemukan');
-        }
-
-        // Update via the model layer (firstOrNew + forceFill + save) so the
-        // BaseKriteriaModel value_enum remap for jenis_magang/open_remote runs.
-        // A Builder ::update() would bypass setAttribute() and emit the legacy
-        // column names as raw SQL (SQLSTATE 42S22 Unknown column). Wrapped in
-        // withoutEvents() so the five rows do not each fire the recompute; the
-        // pipeline is triggered once below.
-        //
-        // rank/bobot are NOT NULL with no column default, so a freshly-created
-        // row (a student who never completed the wizard) needs them too: we
-        // keep any existing rank/bobot and fall back to a sensible default
-        // ordering (ROC weight) when the row is new.
-        $write = function () use ($bidangIndustri, $lokasiMagang, $pekerjaan) {
-            $total = config('recommendation-system.roc.total_criteria');
-
-            $save = function (string $relation, array $value, int $defaultRank) use ($total) {
-                $row = $this->mahasiswa->{$relation}()->firstOrNew(['mahasiswa_id' => $this->mahasiswa->id]);
-
-                $rank = $row->exists ? $row->rank : $defaultRank;
-
-                $row->forceFill($value + [
-                    'rank' => $rank,
-                    'bobot' => ROC::getWeight($rank, $total),
-                ])->save();
-            };
-
-            $save('kriteriaPekerjaan', ['pekerjaan_id' => $pekerjaan->id], 1);
-            $save('kriteriaBidangIndustri', ['bidang_industri_id' => $bidangIndustri->id], 2);
-            $save('kriteriaLokasiMagang', ['lokasi_magang_id' => $lokasiMagang->id], 3);
-            $save('kriteriaJenisMagang', ['jenis_magang' => $this->jenis_magang], 4);
-            $save('kriteriaOpenRemote', ['open_remote' => $this->open_remote], 5);
-        };
-
-        BaseKriteriaModel::withoutEvents($write);
-
-        // Refresh so the reloaded preference data reflects the saved values.
-        $this->mahasiswa->refresh();
-
-        event(new MahasiswaPreferenceUpdated($this->mahasiswa));
+        // Delegate to the Action, which reuses MahasiswaPreferenceService: the
+        // five criteria writes go through firstOrNew()->forceFill()->save()
+        // inside BaseKriteriaModel::withoutEvents() (so the legacy->value_enum
+        // remap for jenis_magang/open_remote runs and the 5 rows do not each
+        // fire a recompute), then one MahasiswaPreferenceUpdated event fires.
+        (new SavePreference)->handle($this->mahasiswa, [
+            'pekerjaan' => $this->pekerjaan,
+            'bidang_industri' => $this->bidang_industri,
+            'lokasi_magang' => $this->lokasi_magang,
+            'jenis_magang' => $this->jenis_magang,
+            'open_remote' => $this->open_remote,
+        ]);
 
         $this->showModal('success', 'Preferensi Magang Berhasil Diperbarui', 'Preferensi magang Anda telah berhasil diperbarui dan sistem rekomendasi telah dijalankan ulang.');
         $this->isUpdatePreference = false;
@@ -326,43 +277,13 @@ $moveDown = function ($index) {
 
 $saveRanking = function () {
     try {
-        $total = config('recommendation-system.roc.total_criteria');
+        // Delegate to the Action, which reuses MahasiswaPreferenceService: each
+        // key at index i gets rank i+1 and its ROC weight, written through a
+        // MODEL instance (firstOrNew()->forceFill()->save()) inside
+        // withoutEvents(); one MahasiswaPreferenceUpdated event fires after.
+        $orderedKeys = array_map(fn ($criteria) => $criteria['key'], $this->temp_rankings);
 
-        // Save through a MODEL instance (firstOrNew), never on the relationship
-        // object: HasOne::forceFill() is undefined and threw
-        // BadMethodCallException, which the catch below swallowed into a generic
-        // error. Wrapped in withoutEvents() so the five rows do not each fire a
-        // recompute; the event is emitted once after the loop.
-        $write = function () use ($total) {
-            foreach ($this->temp_rankings as $index => $criteria) {
-                $rank = $index + 1;
-
-                $relation = match ($criteria['key']) {
-                    'pekerjaan' => 'kriteriaPekerjaan',
-                    'bidang_industri' => 'kriteriaBidangIndustri',
-                    'lokasi_magang' => 'kriteriaLokasiMagang',
-                    'jenis_magang' => 'kriteriaJenisMagang',
-                    'open_remote' => 'kriteriaOpenRemote',
-                    default => null,
-                };
-
-                if ($relation === null) {
-                    continue;
-                }
-
-                $this->mahasiswa->{$relation}()->firstOrNew(['mahasiswa_id' => $this->mahasiswa->id])
-                    ->forceFill([
-                        'rank' => $rank,
-                        'bobot' => ROC::getWeight($rank, $total),
-                    ])->save();
-            }
-        };
-
-        BaseKriteriaModel::withoutEvents($write);
-
-        $this->mahasiswa->refresh();
-
-        event(new MahasiswaPreferenceUpdated($this->mahasiswa));
+        (new SaveRanking)->handle($this->mahasiswa, $orderedKeys);
 
         $this->loadCriteriaRankings();
 
@@ -388,23 +309,14 @@ $updatePassword = function () {
 
 $saveNewPassword = function () {
     try {
-        $this->validate([
-            'current_password' => 'required',
-            'new_password' => 'required|min:8|confirmed',
-            'new_password_confirmation' => 'required',
-        ]);
+        // Validate through the shared form object's rule definitions (W0-T06c).
+        $this->validate(ChangePasswordForm::rules());
 
-        // Verify current password
-        if (!Hash::check($this->current_password, $this->mahasiswa->password)) {
+        // Verify current password + update via the Action.
+        if (! (new ChangePassword)->handle($this->mahasiswa, $this->current_password, $this->new_password)) {
             $this->showModal('error', 'Password Lama Salah', 'Password lama yang Anda masukkan tidak sesuai.');
             return;
         }
-
-        // Update password
-        $this->mahasiswa->forceFill([
-            'password' => Hash::make($this->new_password),
-            'updated_at' => now(),
-        ])->save();
 
         $this->showModal('success', 'Password Berhasil Diubah', 'Password Anda telah berhasil diubah.');
         $this->isUpdatePassword = false;

@@ -59,4 +59,27 @@ class UpdateProfileForm extends Form
             }
         }
     }
+
+    /**
+     * The base validation rules as a plain `field => rules` array.
+     *
+     * W4-T01: lets the Volt profile page validate through this form object's
+     * rules WITHOUT binding it as a component form object (which would force a
+     * `personalForm.nama` wire:model rename across the whole template and risk
+     * behavior drift). The page merges the runtime `unique:mahasiswa,nim,<id>`
+     * clause over the `nim` entry.
+     *
+     * @return array<string, array<int, string>>
+     */
+    public static function rules(): array
+    {
+        return [
+            'nama' => ['required', 'string', 'max:255'],
+            'nim' => ['required', 'string', 'max:20'],
+            'jurusan' => ['required', 'string', 'max:255'],
+            'program_studi' => ['required', 'string', 'max:255'],
+            'jenis_kelamin' => ['required', 'in:L,P'],
+            'alamat' => ['required', 'string', 'max:500'],
+        ];
+    }
 }

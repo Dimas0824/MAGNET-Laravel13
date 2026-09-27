@@ -41,4 +41,23 @@ class ChangePasswordForm extends Form
             }
         }
     }
+
+    /**
+     * The validation rules as a plain `field => rules` array.
+     *
+     * W4-T01: lets the Volt profile page validate through this form object's
+     * rules WITHOUT binding it as a component form object (which would force a
+     * `passwordForm.new_password` wire:model rename across the whole template
+     * and risk behavior drift).
+     *
+     * @return array<string, array<int, string>>
+     */
+    public static function rules(): array
+    {
+        return [
+            'current_password' => ['required'],
+            'new_password' => ['required', 'min:8', 'confirmed'],
+            'new_password_confirmation' => ['required'],
+        ];
+    }
 }
