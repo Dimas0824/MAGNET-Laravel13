@@ -1,14 +1,12 @@
 <?php
 
+use App\Actions\Magang\RegisterInternship;
 use App\Models\BidangIndustri;
 use App\Models\KontrakMagang;
-use App\Models\LokasiMagang;
 use App\Models\LowonganMagang;
-use App\Models\Pekerjaan;
 use App\Models\Perusahaan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Livewire\WithFileUploads;
 
 use function Livewire\Volt\computed;
@@ -144,71 +142,19 @@ $save = function () {
             return;
         }
 
-        $lowongan_magang_id = null;
-
-        if ($this->company_type === 'partner') {
-            $selectedLowongan = LowonganMagang::where('id', $this->selected_lowongan_id)->where('perusahaan_id', $this->selected_company_id)->where('status', 'buka')->first();
-
-            if (! $selectedLowongan) {
-                session()->flash('error', 'Lowongan magang tidak ditemukan atau tidak valid.');
-
-                return;
-            }
-
-            $lowongan_magang_id = $selectedLowongan->id;
-        } else {
-            // Handle file upload for non-partner companies
-            $suratPath = null;
-            if ($this->surat_izin_magang) {
-                $suratPath = $this->surat_izin_magang->store('surat-izin-magang', 'public');
-            }
-
-            // Create or get bidang industri
-            $bidangIndustri = BidangIndustri::firstOrCreate(['nama' => $this->bidang_industri]);
-
-            // Create new company
-            $newCompany = Perusahaan::forceCreate([
-                'nama' => $this->company_name,
-                'bidang_industri_id' => $bidangIndustri->id,
-                'lokasi' => $this->company_address,
-                'kategori' => 'non_mitra',
-                'rating' => 0,
-            ]);
-
-            // Create pekerjaan and lokasi_magang
-            $pekerjaan = Pekerjaan::firstOrCreate(['nama' => 'Magang Umum']);
-            $lokasi_magang = LokasiMagang::firstOrCreate([
-                'kategori_lokasi' => 'Onsite',
-                'lokasi' => $this->lokasi_magang,
-            ]);
-
-            // Create lowongan magang
-            $magang = LowonganMagang::forceCreate([
-                'kuota' => 1,
-                'pekerjaan_id' => $pekerjaan->id,
-                'deskripsi' => "Program magang di {$this->company_name}",
-                'persyaratan' => 'Sesuai dengan persyaratan perusahaan',
-                'jenis_magang' => 'tidak berbayar',
-                'open_remote' => 'tidak',
-                'perusahaan_id' => $newCompany->id,
-                'lokasi_magang_id' => $lokasi_magang->id,
-                'status' => 'buka',
-                'surat_izin_path' => $suratPath, // Store file path if needed
-            ]);
-
-            $lowongan_magang_id = $magang->id;
-        }
-
-        // Create contract with pending status (without dosen assignment)
-        $kontrak = KontrakMagang::forceCreate([
-            'mahasiswa_id' => $this->mahasiswa->id,
-            'dosen_id' => null, // Will be assigned by admin
-            'lowongan_magang_id' => $lowongan_magang_id,
-            'waktu_awal' => now(),
-            'waktu_akhir' => now()->addMonths(3),
-            'status' => 'menunggu_persetujuan', // Pending admin approval
-            'tanggal_daftar' => now(),
-        ]);
+        // Persistence lives in the RegisterInternship action (company chain +
+        // surat izin upload + pending kontrak).
+        $kontrak = (new RegisterInternship(
+            mahasiswa: $this->mahasiswa,
+            companyType: $this->company_type,
+            selectedCompanyId: $this->selected_company_id,
+            selectedLowonganId: $this->selected_lowongan_id,
+            companyName: $this->company_name,
+            companyAddress: $this->company_address,
+            bidangIndustri: $this->bidang_industri,
+            lokasiMagang: $this->lokasi_magang,
+            suratIzinMagang: $this->surat_izin_magang,
+        ))->handle();
 
         // Do NOT change mahasiswa status automatically
         // Status will be changed by admin after approval
@@ -223,6 +169,10 @@ $save = function () {
         $this->existing_contract = $kontrak->load(['lowonganMagang.perusahaan']);
     } catch (\Illuminate\Validation\ValidationException $e) {
         throw $e;
+    } catch (\RuntimeException $e) {
+        // Action-declared guard (e.g. lowongan no longer valid) — same flash
+        // text the source closure used for these cases.
+        session()->flash('error', $e->getMessage());
     } catch (\Exception $e) {
         Log::error('Error saving internship data', [
             'mahasiswa_id' => $this->mahasiswa->id ?? null,
