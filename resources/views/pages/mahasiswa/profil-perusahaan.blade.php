@@ -37,17 +37,37 @@ mount(function (int $id) {
 
 // Location now comes from the lokasi_magang lookup via the company's openings
 // (perusahaan.lokasi free text was dropped in P5-T4).
+//
+// This single eager-loaded query also backs the active-opening count below, so
+// the page never runs a separate render-time count(*). Both computed blocks are
+// resolved by Volt once and cached for the rest of the render.
+$lowonganPerusahaan = computed(function () {
+    if (! $this->perusahaan) {
+        return collect();
+    }
+
+    return LowonganMagang::where('perusahaan_id', $this->perusahaan->id)
+        ->with('lokasiMagang')
+        ->get();
+});
+
 $lokasiLabel = computed(function () {
     if (! $this->perusahaan) {
         return null;
     }
 
-    return LowonganMagang::where('perusahaan_id', $this->perusahaan->id)
-        ->with('lokasiMagang')
-        ->get()
+    return $this->lowonganPerusahaan
         ->map(fn ($l) => $l->lokasiMagang->lokasi ?? null)
         ->filter()
         ->first();
+});
+
+$totalLowonganAktif = computed(function () {
+    if (! $this->perusahaan) {
+        return 0;
+    }
+
+    return $this->lowonganPerusahaan->where('status', 'buka')->count();
 });
 
 $lowonganLainnya = computed(function () {    try {
@@ -209,14 +229,11 @@ $lowonganLainnya = computed(function () {    try {
                         @endforeach
                     </div>
 
-                    @php
-                        $totalLowonganAktif = $perusahaan->lowonganMagang()->where('status', 'buka')->count();
-                    @endphp
-                    @if ($totalLowonganAktif > 3)
+                    @if ($this->totalLowonganAktif > 3)
                         <div class="text-center mt-6 pt-6 border-t border-gray-200">
                             <button
                                 class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium">
-                                <span>Lihat Semua Lowongan ({{ $totalLowonganAktif }})</span>
+                                <span>Lihat Semua Lowongan ({{ $this->totalLowonganAktif }})</span>
                                 <flux:icon.arrow-right class="h-4 w-4" />
                             </button>
                         </div>
