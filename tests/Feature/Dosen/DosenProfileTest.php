@@ -28,10 +28,6 @@ it('persists a personal-data update', function () {
     $dosen = DosenPembimbing::factory()->create(['nama' => 'Nama Lama']);
     actingAsDosen($dosen);
 
-    // NOTE: savePersonalData validates `unique:dosen,nidn` — a rule that
-    // references a non-existent `dosen` table (the table is `dosen_pembimbing`),
-    // so it throws and the save is swallowed by the catch. This test locks the
-    // CURRENT (buggy) behavior; the refactor must not change it silently.
     Volt::test('pages.dosen.profile')
         ->call('updatePersonalData')
         ->set('nama', 'Nama Baru')
@@ -39,8 +35,8 @@ it('persists a personal-data update', function () {
         ->set('jenis_kelamin', $dosen->jenis_kelamin)
         ->call('savePersonalData');
 
-    // Current behavior: the unique:dosen rule errors, so nama is NOT persisted.
-    expect($dosen->fresh()->nama)->toBe('Nama Lama');
+    // The unique rule now targets dosen_pembimbing, so the save persists.
+    expect($dosen->fresh()->nama)->toBe('Nama Baru');
 });
 
 it('changes the password with a correct current password', function () {
@@ -72,7 +68,8 @@ it('rejects a duplicate NIDN on personal-data save', function () {
         ->set('nama', $dosen->nama)
         ->set('nidn', '0011111111')
         ->set('jenis_kelamin', $dosen->jenis_kelamin)
-        ->call('savePersonalData');
+        ->call('savePersonalData')
+        ->assertHasErrors('nidn');
 
     expect($dosen->fresh()->nidn)->not->toBe('0011111111');
 });

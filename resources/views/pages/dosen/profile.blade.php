@@ -78,7 +78,7 @@ $savePersonalData = function () {
     try {
         $this->validate([
             'nama' => 'required|string|max:255',
-            'nidn' => 'required|string|max:20|unique:dosen,nidn,' . $this->dosen->id,
+            'nidn' => 'required|string|max:20|unique:dosen_pembimbing,nidn,' . $this->dosen->id . ',id',
             'jenis_kelamin' => 'required|in:L,P',
             'foto' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
@@ -101,7 +101,7 @@ $savePersonalData = function () {
         $this->showModal('success', 'Data Personal Berhasil Diperbarui', 'Data personal Anda telah berhasil diperbarui.');
         $this->isUpdatePersonalData = false;
     } catch (\Illuminate\Validation\ValidationException $e) {
-        $this->showModal('error', 'Gagal Memperbarui Data Personal', 'Terjadi kesalahan validasi. Silakan periksa kembali data Anda.');
+        throw $e;
     } catch (\Exception $e) {
         $this->showModal('error', 'Gagal Memperbarui Data Personal', 'Terjadi kesalahan sistem. Silakan coba lagi.');
     }
