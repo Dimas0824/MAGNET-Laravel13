@@ -3,6 +3,7 @@
 use Flux\Flux;
 use function Livewire\Volt\{layout, state, mount};
 use App\Models\Perusahaan;
+use App\Models\LokasiMagang;
 
 layout('components.layouts.user.main');
 
@@ -14,6 +15,9 @@ state([
     'kategori',
     'rating',
     'logo',
+
+    'lokasiOptions' => [],
+    'lokasiNama' => '',
 
     'isEditing' => false,
 
@@ -28,6 +32,17 @@ mount(function (int $id) {
     $this->kategori = $this->perusahaan->kategori;
     $this->rating = $this->perusahaan->rating;
     $this->logo = $this->perusahaan->logo;
+
+    // Resolve the lokasi lookups ONCE here instead of on every render.
+    $this->lokasiOptions = LokasiMagang::orderBy('kategori_lokasi')
+        ->get()
+        ->map(fn (LokasiMagang $lokasi) => [
+            'id' => $lokasi->id,
+            'label' => $lokasi->kategori_lokasi.' — '.$lokasi->lokasi,
+        ])
+        ->all();
+
+    $this->lokasiNama = optional($this->perusahaan->lokasiMagang)->lokasi;
 });
 
 $editData = fn() => ($this->isEditing = !$this->isEditing);
@@ -141,12 +156,12 @@ $deleteData = function () {
                             <flux:label>Lokasi</flux:label>
                             @if ($isEditing)
                                 <flux:select placeholder="Pilih lokasi" wire:model="lokasi_magang_id">
-                                    @foreach (\App\Models\LokasiMagang::orderBy('kategori_lokasi')->get() as $lokasi)
-                                        <flux:select.option value="{{ $lokasi->id }}">{{ $lokasi->kategori_lokasi }} — {{ $lokasi->lokasi }}</flux:select.option>
+                                    @foreach ($lokasiOptions as $lokasi)
+                                        <flux:select.option value="{{ $lokasi['id'] }}">{{ $lokasi['label'] }}</flux:select.option>
                                     @endforeach
                                 </flux:select>
                             @else
-                                <flux:input value="{{ optional(\App\Models\LokasiMagang::find($lokasi_magang_id))->lokasi }}" readonly
+                                <flux:input value="{{ $lokasiNama }}" readonly
                                     class="caret-transparent" />
                             @endif
                             <flux:error name="lokasi_magang_id" />
