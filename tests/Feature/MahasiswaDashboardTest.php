@@ -1,8 +1,10 @@
 <?php
 
+use App\Models\BidangIndustri;
 use App\Models\FinalRankRecommendation;
 use App\Models\FullMultiplicativeForm;
 use App\Models\Mahasiswa;
+use App\Models\Pekerjaan;
 use App\Models\RatioSystem;
 use Illuminate\Support\Facades\DB;
 
@@ -49,6 +51,73 @@ it('renders the dashboard for an authenticated mahasiswa', function () {
     actingAsMahasiswa($mahasiswa);
 
     $this->get(route('dashboard'))->assertOk();
+});
+
+it('renders identical recommendation rows and ranks', function () {
+    // Characterization for the LatestRecommendationService extraction: the
+    // dashboard must render the same rows, in the same rank order, byte-for-byte.
+    $mahasiswa = mahasiswaDenganPreferensi();
+    seedRecommendations($mahasiswa, 3);
+    actingAsMahasiswa($mahasiswa);
+
+    $pekerjaan = Pekerjaan::where('nama', 'Software Engineer')->value('nama');
+    $bidang = BidangIndustri::where('nama', 'Teknologi')->value('nama');
+
+    $response = $this->get(route('dashboard'));
+    $response->assertOk();
+
+    // Seeded pekerjaan / perusahaan surface on the page.
+    $response->assertSee($pekerjaan, false);
+    $response->assertSee($bidang, false);
+
+    // Ranks are rendered in ascending order: rank 1 before rank 2 before rank 3.
+    $html = $response->getContent();
+    $posRank1 = strpos($html, 'Rank #1');
+    $posRank2 = strpos($html, 'Rank #2');
+    $posRank3 = strpos($html, 'Rank #3');
+
+    expect($posRank1)->not->toBeFalse()
+        ->and($posRank2)->not->toBeFalse()
+        ->and($posRank3)->not->toBeFalse()
+        ->and($posRank1)->toBeLessThan($posRank2)
+        ->and($posRank2)->toBeLessThan($posRank3);
+
+    // The "Top 10 Rekomendasi Magang" section is populated (not the empty state).
+    $response->assertSee('Top 10 Rekomendasi Magang', false);
+    $response->assertDontSee('Tidak ada rekomendasi tersedia', false);
+
+    // The state array is the same shape the view consumes: rank + lowongan_id
+    // per row, still ordered by ascending rank after the null-filter.
+    $recommendations = Livewire\Volt\Volt::test('pages.mahasiswa.dashboard')
+        ->call('$refresh')
+        ->get('recommendations');
+
+    expect($recommendations)->toHaveCount(3)
+        ->and(array_column($recommendations, 'rank'))->toBe([1, 2, 3]);
+});
+
+it('bounds recommendation lookups for a single mahasiswa regardless of row count', function () {
+    // Explicit query budget for the recommendation extraction. Mirrors the
+    // existing bounded-query test but pins the <=14 budget from the task spec.
+    $countQueries = function (int $rows): int {
+        $mahasiswa = mahasiswaDenganPreferensi();
+        seedRecommendations($mahasiswa, $rows);
+        actingAsMahasiswa($mahasiswa);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->get(route('dashboard'))->assertOk();
+        $count = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        return $count;
+    };
+
+    $small = $countQueries(2);
+    $large = $countQueries(8);
+
+    expect($small)->toBeLessThanOrEqual(14)
+        ->and($large)->toBe($small);
 });
 
 it('runs a bounded number of queries for the recommendations', function () {
