@@ -6,6 +6,8 @@ use App\Models\Concerns\Auditable;
 use App\Models\Concerns\BelongsToTenant;
 use App\Observers\AuditObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[ObservedBy(AuditObserver::class)]
@@ -89,5 +91,16 @@ class Mahasiswa extends UserBase
     public function encodedAlternatives()
     {
         return $this->hasMany(EncodedAlternatives::class);
+    }
+
+    /**
+     * Students whose internship is not yet finished. Mirrors the inline
+     * `->where('mahasiswa.status_magang', '!=', 'selesai')` chain in the dosen
+     * guidance view.
+     */
+    #[Scope]
+    protected function belumSelesai(Builder $query): void
+    {
+        $query->where('status_magang', '!=', 'selesai');
     }
 }

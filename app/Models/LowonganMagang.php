@@ -7,6 +7,8 @@ use App\Models\Concerns\Auditable;
 use App\Models\Concerns\BelongsToTenant;
 use App\Observers\AuditObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -61,5 +63,25 @@ class LowonganMagang extends Model
     public function kontrak_magang()
     {
         return $this->hasMany(KontrakMagang::class);
+    }
+
+    /**
+     * Only open openings. Mirrors the inline `->where('status', 'buka')` chain
+     * used across the student views.
+     */
+    #[Scope]
+    protected function buka(Builder $query): void
+    {
+        $query->where('status', 'buka');
+    }
+
+    /**
+     * Restrict to a single company's openings. Mirrors the inline
+     * `->where('perusahaan_id', $id)` chain in the student views.
+     */
+    #[Scope]
+    protected function forPerusahaan(Builder $query, int $perusahaanId): void
+    {
+        $query->where('perusahaan_id', $perusahaanId);
     }
 }
