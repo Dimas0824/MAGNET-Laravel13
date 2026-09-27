@@ -15,6 +15,7 @@ state([
     'kontrakMagang' => null,
     'mahasiswa' => null,
     'dosen_selected' => null,
+    'dosenList' => [],
     'admin_keterangan' => '',
     'rejection_reason' => '',
     'isProcessing' => false,
@@ -32,6 +33,14 @@ mount(function () {
         $this->mahasiswa = $this->kontrakMagang->mahasiswa;
         $this->dosen_selected = $this->kontrakMagang->dosen_id;
     }
+
+    // Resolve the dosen options once at mount so the render does not issue a
+    // read query of its own.
+    $this->dosenList = DosenPembimbing::select('id', 'nama', 'nidn')
+        ->whereNotNull('nama')
+        ->orderBy('nama', 'asc')
+        ->get()
+        ->all();
 });
 
 $canApprove = computed(function () {
@@ -452,12 +461,6 @@ $showRejectionModal = function () {
                         <flux:field>
                             <flux:label>Dosen Pembimbing</flux:label>
                             <flux:select wire:model.live="dosen_selected" placeholder="Pilih Dosen Pembimbing">
-                                @php
-                                    $dosenList = DosenPembimbing::select('id', 'nama', 'nidn')
-                                        ->whereNotNull('nama')
-                                        ->orderBy('nama', 'asc')
-                                        ->get();
-                                @endphp
                                 @foreach ($dosenList as $dosen)
                                     <flux:select.option value="{{ $dosen->id }}">
                                         {{ $dosen->nama }}{{ $dosen->nidn ? " (NIDN: {$dosen->nidn})" : '' }}
