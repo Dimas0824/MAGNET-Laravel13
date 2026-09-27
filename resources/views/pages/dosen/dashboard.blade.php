@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use App\Models\Mahasiswa;
 use App\Models\KontrakMagang;
 use App\Models\DosenPembimbing;
@@ -105,15 +104,7 @@ $feedbackDiberikan = computed(function () {
     $dosenId = Auth::guard('dosen')->id();
 
     return KontrakMagang::where('dosen_id', $dosenId)
-        ->whereExists(function ($query) {
-            $query
-                ->select(DB::raw(1))
-                ->from('umpan_balik_magang')
-                ->whereRaw('umpan_balik_magang.kontrak_magang_id = kontrak_magang.id')
-                ->where('umpan_balik_magang.created_at', '>=', now()->subDays(30))
-                ->whereNotNull('umpan_balik_magang.komentar')
-                ->where('umpan_balik_magang.komentar', '!=', '');
-        })
+        ->withFeedbackSince(30)
         ->count();
 });
 

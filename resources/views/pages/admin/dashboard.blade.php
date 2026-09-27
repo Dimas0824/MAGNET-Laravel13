@@ -1,32 +1,9 @@
 <?php
 
 use function Livewire\Volt\{state};
-use App\Models\{FormPengajuanMagang, KontrakMagang, BidangIndustri};
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+use App\Actions\Dashboard\BuildAdminStats;
 
-$statusCounts = FormPengajuanMagang::query()
-    ->select('status', DB::raw('COUNT(*) as total'))
-    ->groupBy('status')
-    ->pluck('total', 'status');
-
-state([
-    'totalPengajuanMasuk' => (int) ($statusCounts['diproses'] ?? 0),
-    'totalPengajuanDiterima' => (int) ($statusCounts['diterima'] ?? 0),
-    'totalPengajuanDitolak' => (int) ($statusCounts['ditolak'] ?? 0),
-
-    'totalKontrakMagangTahunIni' => KontrakMagang::whereYear('created_at', Carbon::now()->year)->count(),
-
-    'bidangIndustriTerpopuler' => BidangIndustri::withCount([
-        'perusahaan as total_mahasiswa' => function ($query) {
-            $query->join('lowongan_magang', 'perusahaan.id', '=', 'lowongan_magang.perusahaan_id')->join('kontrak_magang', 'lowongan_magang.id', '=', 'kontrak_magang.lowongan_magang_id');
-        },
-    ])
-        ->orderByDesc('total_mahasiswa')
-        ->take(5)
-        ->get()
-        ->toArray(),
-]);
+state((new BuildAdminStats)->handle());
 
 ?>
 

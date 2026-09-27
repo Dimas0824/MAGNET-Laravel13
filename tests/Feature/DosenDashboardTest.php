@@ -86,6 +86,28 @@ it('does not reference the dropped lowongan_magang.nama column', function () {
     expect($sql)->not->toContain('lowongan_magang`.`nama`');
 });
 
+it('renders feedback count identical + budget <=9', function () {
+    // W2-T04 characterization: the "Feedback Diberikan" card must keep counting
+    // the same rows after the inline DB::raw(1) exists() sub-query is replaced
+    // by the KontrakMagang::withFeedbackSince(30) scope. Three bimbingan all
+    // have non-empty feedback created just now, so the card shows 3.
+    $dosen = dosenWithBimbingan(3);
+    actingAsDosen($dosen);
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    $response = $this->get(route('dashboard'))->assertOk();
+    $count = count(DB::getQueryLog());
+    DB::disableQueryLog();
+
+    // Identical output: the card renders "3 Mahasiswa" for Feedback Diberikan.
+    $response->assertSee('Feedback Diberikan')
+        ->assertSee('3 Mahasiswa');
+
+    // The scope keeps the request within the same query budget (<=9).
+    expect($count)->toBeLessThanOrEqual(9);
+});
+
 it('reports the total and completed bimbingan counts from one grouped query', function () {
     $dosen = dosenWithBimbingan(4);
     actingAsDosen($dosen);
