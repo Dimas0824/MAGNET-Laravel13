@@ -4,9 +4,10 @@ use Flux\Flux;
 use function Livewire\Volt\{state, mount};
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\Password;
+use App\Actions\Dosen\UpdateDosenProfile;
+use App\Actions\Dosen\ChangeDosenPassword;
 
 state([
     'dosen',
@@ -82,30 +83,17 @@ $savePersonalData = function () {
             'foto' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
-        $updateData = [
+        $newFoto = (new UpdateDosenProfile)->handle($this->dosen, [
             'nama' => $this->nama,
             'nidn' => $this->nidn,
             'jenis_kelamin' => $this->jenis_kelamin,
-            'updated_at' => now(),
-        ];
+        ], $this->foto);
 
-        // Handle photo upload
-        if ($this->foto) {
-            // Delete old photo if exists
-            if ($this->dosen->foto && Storage::disk('public')->exists('foto_dosen/' . $this->dosen->foto)) {
-                Storage::disk('public')->delete('foto_dosen/' . $this->dosen->foto);
-            }
-
-            // Store new photo
-            $filename = time() . '_' . $this->foto->getClientOriginalName();
-            $this->foto->storeAs('foto_dosen', $filename, 'public');
-            $updateData['foto'] = $filename;
-
+        // Handle photo upload state
+        if ($newFoto) {
             $this->hasPhoto = true;
-            $this->currentPhoto = asset('storage/foto_dosen/' . $filename);
+            $this->currentPhoto = asset('storage/foto_dosen/' . $newFoto);
         }
-
-        $this->dosen->update($updateData);
 
         // Clear form fields
         $this->reset(['foto']);
@@ -181,17 +169,11 @@ $saveNewPassword = function () {
             'new_password_confirmation' => 'required',
         ]);
 
-        // Verify current password
-        if (!Hash::check($this->current_password, $this->dosen->password)) {
+        // Verify current password + update
+        if (! (new ChangeDosenPassword)->handle($this->dosen, $this->current_password, $this->new_password)) {
             $this->showModal('error', 'Password Lama Salah', 'Password lama yang Anda masukkan tidak sesuai.');
             return;
         }
-
-        // Update password
-        $this->dosen->forceFill([
-            'password' => Hash::make($this->new_password),
-            'updated_at' => now(),
-        ])->save();
 
         $this->showModal('success', 'Password Berhasil Diubah', 'Password Anda telah berhasil diubah.');
         $this->isUpdatePassword = false;
