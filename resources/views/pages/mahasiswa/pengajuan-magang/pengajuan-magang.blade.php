@@ -1,6 +1,6 @@
 <?php
 
-use function Livewire\Volt\{layout, rules, state, protect};
+use function Livewire\Volt\{layout, state, protect};
 
 layout('components.layouts.user.main');
 

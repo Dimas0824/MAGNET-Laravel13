@@ -7,7 +7,7 @@ use App\Models\LogMagang;
 use App\Models\UmpanBalikMagang;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use function Livewire\Volt\{layout, state, mount, computed, form};
+use function Livewire\Volt\{layout, state, mount, computed};
 
 state(['mahasiswaId', 'perPage' => 10, 'currentPage' => 1, 'showFeedbackModal' => false, 'showSuccessModal' => false]);
 
