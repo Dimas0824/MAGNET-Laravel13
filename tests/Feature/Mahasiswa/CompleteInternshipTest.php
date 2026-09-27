@@ -88,20 +88,16 @@ it('completes internship: ulasan saved, kontrak+status updated, file on public d
     expect($action->filePath)->toStartWith('surat-selesai-magang/')
         ->and($action->filePath)->toEndWith('.pdf');
 
-    // --- Kontrak updated: waktu_akhir stamped -------------------------------
+    // --- Kontrak updated: waktu_akhir stamped + status selesai --------------
     //
-    // The source component also writes `status => 'selesai'`, but the current
-    // kontrak_magang.status enum only allows
-    // {menunggu_persetujuan, disetujui, ditolak}; writing 'selesai' raises a
-    // strict-mode "Data truncated" QueryException and rolls everything back.
-    // The action keeps the write but skips the unsupported value (see
-    // CompleteInternship::kontrakStatusAccepts()), so on this schema the
-    // kontrak status is left untouched while the finish effect (waktu_akhir)
-    // still lands.
+    // The source component always wrote `status => 'selesai'`; the
+    // kontrak_magang.status enum now includes 'selesai' (migration
+    // 2026_09_28_000100), so the action writes it unconditionally alongside
+    // the waktu_akhir stamp.
     $kontrak->refresh();
     expect($kontrak->waktu_akhir)->not->toBeNull()
         ->and($kontrak->waktu_akhir->isFuture())->toBeFalse()
-        ->and($kontrak->status)->not->toBe('selesai');
+        ->and($kontrak->status)->toBe('selesai');
 
     // --- Mahasiswa updated: status selesai magang ---------------------------
     $mahasiswa->refresh();
@@ -157,6 +153,7 @@ it('wires the Volt component through the action end to end', function () {
         ->and($ulasan->komentar)->toBe('Pengalaman magang yang sangat berkesan dan banyak ilmu baru.');
 
     expect(Mahasiswa::find($mahasiswa->id)->status_magang)->toBe('selesai magang');
+    expect(KontrakMagang::find($kontrak->id)->status)->toBe('selesai');
 });
 
 it('rejects an invalid review through the component without writing', function () {

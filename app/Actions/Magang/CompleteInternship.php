@@ -88,47 +88,17 @@ class CompleteInternship implements Action
 
             $this->mahasiswa->forceFill($updateData)->save();
 
-            // Update kontrak magang end date (+ status when the column exists).
-            //
-            // The source component guarded this write with Schema::hasColumn()
-            // and always wrote status = 'selesai'. On the current schema the
-            // kontrak_magang.status enum only allows
-            // {menunggu_persetujuan, disetujui, ditolak} — writing 'selesai'
-            // raises a strict-mode "Data truncated" QueryException and rolls the
-            // whole transaction back. Because a schema change is out of scope
-            // for this extraction, the status write is kept but skipped only
-            // when the column cannot hold the value; waktu_akhir is always
-            // stamped, so the observable "finish the contract" effect is kept.
-            $kontrakUpdateData = ['waktu_akhir' => now()];
-
-            if (Schema::hasColumn('kontrak_magang', 'status') && $this->kontrakStatusAccepts('selesai')) {
-                $kontrakUpdateData['status'] = 'selesai';
-            }
+            // Update kontrak magang end date + status. The source component
+            // guarded this write with Schema::hasColumn() and always wrote
+            // status = 'selesai'; the kontrak_magang.status enum now includes
+            // 'selesai' (migration 2026_09_28_000100), so the write happens
+            // unconditionally and stamping waktu_akhir always accompanies it.
+            $kontrakUpdateData = ['waktu_akhir' => now(), 'status' => 'selesai'];
 
             $this->kontrak->update($kontrakUpdateData);
 
             return ['filePath' => $this->filePath, 'ulasan' => $ulasan];
         });
-    }
-
-    /**
-     * Whether `kontrak_magang.status` can store $value (enum membership), so the
-     * ported write never turns into a strict-mode truncation error on schemas
-     * whose enum omits it.
-     */
-    private function kontrakStatusAccepts(string $value): bool
-    {
-        $type = DB::selectOne(
-            "SHOW COLUMNS FROM kontrak_magang WHERE Field = 'status'"
-        )?->Type ?? '';
-
-        if (! str_starts_with(strtolower($type), 'enum(')) {
-            return true; // varchar/string accepts anything
-        }
-
-        preg_match_all("/'((?:[^']|'')*)'/", $type, $matches);
-
-        return in_array($value, str_replace("''", "'", $matches[1] ?? []), true);
     }
 }
 
