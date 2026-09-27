@@ -33,16 +33,13 @@ $mahasiswa = computed(function () {
     return $query->paginate($this->perPage);
 });
 
-function clearSearch()
-{
-    state('search', '');
-    state('page', 1);
-}
+$clearSearch = function () {
+    $this->search = '';
+};
 
-function updateSearch()
-{
-    state('page', 1);
-}
+$updateSearch = function () {
+    // search is wire:model.live.debounced; nothing extra needed.
+};
 
 ?>
 <div>
