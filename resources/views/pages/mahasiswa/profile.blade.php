@@ -4,6 +4,7 @@ use Flux\Flux;
 use function Livewire\Volt\{state, mount};
 use Illuminate\Support\Facades\Hash;
 use App\Models\{Mahasiswa, BidangIndustri, LokasiMagang, Pekerjaan};
+use App\Models\BaseKriteriaModel;
 use App\Helpers\DecisionMaking\ROC;
 use App\Events\MahasiswaPreferenceUpdated;
 
@@ -93,12 +94,13 @@ mount(function () {
     $this->jenis_kelamin = $this->mahasiswa->jenis_kelamin;
     $this->alamat = $this->mahasiswa->alamat;
 
-    // Load preference data dengan nama, bukan ID
-    $this->bidang_industri = $this->mahasiswa->kriteriaBidangIndustri->bidangIndustri->nama;
-    $this->jenis_magang = $this->mahasiswa->kriteriaJenisMagang->jenis_magang;
-        $this->lokasi_magang = $this->mahasiswa->kriteriaLokasiMagang->lokasiMagang->kategori_lokasi;
-    $this->pekerjaan = $this->mahasiswa->kriteriaPekerjaan->pekerjaan->nama;
-    $this->open_remote = $this->mahasiswa->kriteriaOpenRemote->open_remote;
+    // Load preference data dengan nama, bukan ID. A student who has not set
+    // preferences yet has no criteria rows, so every access must be null-safe.
+    $this->bidang_industri = $this->mahasiswa->kriteriaBidangIndustri?->bidangIndustri?->nama ?? '';
+    $this->jenis_magang = $this->mahasiswa->kriteriaJenisMagang?->jenis_magang ?? '';
+    $this->lokasi_magang = $this->mahasiswa->kriteriaLokasiMagang?->lokasiMagang?->kategori_lokasi ?? '';
+    $this->pekerjaan = $this->mahasiswa->kriteriaPekerjaan?->pekerjaan?->nama ?? '';
+    $this->open_remote = $this->mahasiswa->kriteriaOpenRemote?->open_remote ?? '';
 
     // Load criteria rankings
     $this->loadCriteriaRankings();
@@ -111,46 +113,49 @@ $setActiveSection = function ($section) {
 
 // Load criteria rankings
 $loadCriteriaRankings = function () {
+    // A student who has not set preferences yet has no criteria rows; default
+    // rank/bobot so the profile still renders (null-safe, P3 collapse made the
+    // relations return null instead of an empty stub row).
     $this->criteria_rankings = [
         [
             'key' => 'pekerjaan',
             'label' => 'Pekerjaan',
             'icon' => 'briefcase',
             'description' => 'Jenis pekerjaan yang diinginkan',
-            'rank' => $this->mahasiswa->kriteriaPekerjaan->rank,
-            'bobot' => $this->mahasiswa->kriteriaPekerjaan->bobot,
+            'rank' => $this->mahasiswa->kriteriaPekerjaan?->rank ?? 0,
+            'bobot' => $this->mahasiswa->kriteriaPekerjaan?->bobot ?? 0,
         ],
         [
             'key' => 'bidang_industri',
             'label' => 'Bidang Industri',
             'icon' => 'building-office',
             'description' => 'Sektor industri yang diminati',
-            'rank' => $this->mahasiswa->kriteriaBidangIndustri->rank,
-            'bobot' => $this->mahasiswa->kriteriaBidangIndustri->bobot,
+            'rank' => $this->mahasiswa->kriteriaBidangIndustri?->rank ?? 0,
+            'bobot' => $this->mahasiswa->kriteriaBidangIndustri?->bobot ?? 0,
         ],
         [
             'key' => 'lokasi_magang',
             'label' => 'Lokasi Magang',
             'icon' => 'map-pin',
             'description' => 'Preferensi lokasi magang',
-            'rank' => $this->mahasiswa->kriteriaLokasiMagang->rank,
-            'bobot' => $this->mahasiswa->kriteriaLokasiMagang->bobot,
+            'rank' => $this->mahasiswa->kriteriaLokasiMagang?->rank ?? 0,
+            'bobot' => $this->mahasiswa->kriteriaLokasiMagang?->bobot ?? 0,
         ],
         [
             'key' => 'jenis_magang',
             'label' => 'Jenis Magang',
             'icon' => 'currency-dollar',
             'description' => 'Berbayar atau tidak berbayar',
-            'rank' => $this->mahasiswa->kriteriaJenisMagang->rank,
-            'bobot' => $this->mahasiswa->kriteriaJenisMagang->bobot,
+            'rank' => $this->mahasiswa->kriteriaJenisMagang?->rank ?? 0,
+            'bobot' => $this->mahasiswa->kriteriaJenisMagang?->bobot ?? 0,
         ],
         [
             'key' => 'open_remote',
             'label' => 'Remote Work',
             'icon' => 'computer-desktop',
             'description' => 'Kesempatan kerja remote',
-            'rank' => $this->mahasiswa->kriteriaOpenRemote->rank,
-            'bobot' => $this->mahasiswa->kriteriaOpenRemote->bobot,
+            'rank' => $this->mahasiswa->kriteriaOpenRemote?->rank ?? 0,
+            'bobot' => $this->mahasiswa->kriteriaOpenRemote?->bobot ?? 0,
         ],
     ];
 
@@ -230,14 +235,42 @@ $saveNewPreference = function () {
             throw new \Exception('Pekerjaan tidak ditemukan');
         }
 
-        // Update data dengan ID yang sesuai
-        $this->mahasiswa->kriteriaBidangIndustri()->update(['bidang_industri_id' => $bidangIndustri->id]);
-        $this->mahasiswa->kriteriaJenisMagang()->update(['jenis_magang' => $this->jenis_magang]);
-        $this->mahasiswa->kriteriaLokasiMagang()->update(['lokasi_magang_id' => $lokasiMagang->id]);
-        $this->mahasiswa->kriteriaPekerjaan()->update(['pekerjaan_id' => $pekerjaan->id]);
-        $this->mahasiswa->kriteriaOpenRemote()->update(['open_remote' => $this->open_remote]);
+        // Update via the model layer (firstOrNew + forceFill + save) so the
+        // BaseKriteriaModel value_enum remap for jenis_magang/open_remote runs.
+        // A Builder ::update() would bypass setAttribute() and emit the legacy
+        // column names as raw SQL (SQLSTATE 42S22 Unknown column). Wrapped in
+        // withoutEvents() so the five rows do not each fire the recompute; the
+        // pipeline is triggered once below.
+        //
+        // rank/bobot are NOT NULL with no column default, so a freshly-created
+        // row (a student who never completed the wizard) needs them too: we
+        // keep any existing rank/bobot and fall back to a sensible default
+        // ordering (ROC weight) when the row is new.
+        $write = function () use ($bidangIndustri, $lokasiMagang, $pekerjaan) {
+            $total = config('recommendation-system.roc.total_criteria');
 
-        $this->mahasiswa->touch();
+            $save = function (string $relation, array $value, int $defaultRank) use ($total) {
+                $row = $this->mahasiswa->{$relation}()->firstOrNew(['mahasiswa_id' => $this->mahasiswa->id]);
+
+                $rank = $row->exists ? $row->rank : $defaultRank;
+
+                $row->forceFill($value + [
+                    'rank' => $rank,
+                    'bobot' => ROC::getWeight($rank, $total),
+                ])->save();
+            };
+
+            $save('kriteriaPekerjaan', ['pekerjaan_id' => $pekerjaan->id], 1);
+            $save('kriteriaBidangIndustri', ['bidang_industri_id' => $bidangIndustri->id], 2);
+            $save('kriteriaLokasiMagang', ['lokasi_magang_id' => $lokasiMagang->id], 3);
+            $save('kriteriaJenisMagang', ['jenis_magang' => $this->jenis_magang], 4);
+            $save('kriteriaOpenRemote', ['open_remote' => $this->open_remote], 5);
+        };
+
+        BaseKriteriaModel::withoutEvents($write);
+
+        // Refresh so the reloaded preference data reflects the saved values.
+        $this->mahasiswa->refresh();
 
         event(new MahasiswaPreferenceUpdated($this->mahasiswa));
 
